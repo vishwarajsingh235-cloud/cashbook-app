@@ -1,5 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { 
   ArrowDownRight, 
   ArrowUpRight, 
@@ -80,7 +82,7 @@ export default function CashLedgerDashboard() {
 
   const netBalance = totalCashIn - totalCashOut;
 
-  // Add Transaction Entry (No Backend Error Guaranteed)
+  // Add Transaction Entry
   const handleAddTransaction = (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || parseFloat(amount) <= 0) return;
@@ -153,6 +155,139 @@ export default function CashLedgerDashboard() {
     }
   };
 
+  // INSTANT NATIVE A4 PDF DOWNLOAD (Bypasses Backend/Vercel Routing Completely)
+  const downloadA4PDF = () => {
+    const doc = new jsPDF('p', 'mm', 'a4');
+
+    // 1. Full Page Border
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(1);
+    doc.rect(8, 8, 194, 281);
+
+    // 2. Logo Badge ("CL")
+    doc.setFillColor(15, 23, 42);
+    doc.roundedRect(14, 14, 16, 16, 3, 3, 'F');
+    doc.setTextColor(56, 189, 248);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CL', 18, 24);
+
+    // 3. Store Header Details
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text(businessName.toUpperCase(), 34, 20);
+
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Phone: +91 ${phone} ${address ? '| ' + address : ''}`, 34, 26);
+
+    // 4. Statement Header Title
+    doc.setTextColor(2, 132, 199);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ACCOUNT STATEMENT', 196, 20, { align: 'right' });
+
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 196, 26, { align: 'right' });
+
+    // Divider
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.5);
+    doc.line(14, 34, 196, 34);
+
+    // 5. Summary Metrics Boxes
+    // Total Credit (Green Box)
+    doc.setFillColor(240, 253, 244);
+    doc.setDrawColor(187, 247, 208);
+    doc.roundedRect(14, 38, 56, 18, 2, 2, 'FD');
+    doc.setTextColor(21, 128, 61);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL CREDIT', 18, 43);
+    doc.setTextColor(22, 163, 74);
+    doc.setFontSize(10);
+    doc.text(`Rs. ${totalCashIn.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 18, 51);
+
+    // Total Debit (Red Box)
+    doc.setFillColor(254, 242, 242);
+    doc.setDrawColor(254, 202, 202);
+    doc.roundedRect(74, 38, 56, 18, 2, 2, 'FD');
+    doc.setTextColor(185, 28, 28);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL DEBIT', 78, 43);
+    doc.setTextColor(220, 38, 38);
+    doc.setFontSize(10);
+    doc.text(`Rs. ${totalCashOut.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 78, 51);
+
+    // Net Balance (Blue Box)
+    doc.setFillColor(240, 249, 255);
+    doc.setDrawColor(186, 230, 253);
+    doc.roundedRect(134, 38, 62, 18, 2, 2, 'FD');
+    doc.setTextColor(3, 105, 161);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('NET BALANCE', 138, 43);
+    doc.setTextColor(2, 132, 199);
+    doc.setFontSize(10);
+    doc.text(`Rs. ${Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })} ${netBalance >= 0 ? 'Cr' : 'Dr'}`, 138, 51);
+
+    // 6. Table Generation
+    const tableData = transactions.map((t) => [
+      new Date(t.txn_date).toLocaleDateString('en-IN'),
+      t.remarks || 'Cash Entry',
+      t.payment_mode || 'Cash',
+      t.txn_type === 'CASH_OUT' ? parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-',
+      t.txn_type === 'CASH_IN' ? parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-'
+    ]);
+
+    autoTable(doc, {
+      startY: 61,
+      head: [['DATE', 'PARTICULARS / REMARKS', 'MODE', 'DEBIT (RS.)', 'CREDIT (RS.)']],
+      body: tableData.length > 0 ? tableData : [['-', 'No transactions recorded', '-', '-', '-']],
+      theme: 'grid',
+      headStyles: {
+        fillColor: [15, 23, 42],
+        textColor: [255, 255, 255],
+        fontSize: 8,
+        fontStyle: 'bold',
+        halign: 'left'
+      },
+      bodyStyles: {
+        fontSize: 8,
+        textColor: [51, 65, 85]
+      },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 80 },
+        2: { cellWidth: 22 },
+        3: { cellWidth: 27, halign: 'right' },
+        4: { cellWidth: 28, halign: 'right' }
+      },
+      margin: { left: 14, right: 14 }
+    });
+
+    // 7. Footer
+    const finalY = (doc as any).lastAutoTable.finalY || 100;
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(7);
+    doc.text('* Computer Generated Statement. Powered by CashLedger Engine', 14, finalY + 12);
+
+    doc.setDrawColor(15, 23, 42);
+    doc.line(150, finalY + 12, 196, finalY + 12);
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Authorized Signatory', 173, finalY + 16, { align: 'center' });
+
+    // Force Save File Direct to Disk
+    doc.save('CashLedger_Statement.pdf');
+  };
+
   const filteredTransactions = transactions.filter(t => 
     (t.remarks && t.remarks.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (t.payment_mode && t.payment_mode.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -220,7 +355,7 @@ export default function CashLedgerDashboard() {
 
         <div className="p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800">
           <div className="text-xs font-extrabold text-white mb-0.5 truncate">+91 {phone}</div>
-          <div className="text-[10px] text-emerald-400 font-bold uppercase">Active Standalone Account</div>
+          <div className="text-[10px] text-emerald-400 font-bold uppercase">Standalone Offline Ready</div>
         </div>
       </aside>
 
@@ -428,7 +563,7 @@ export default function CashLedgerDashboard() {
                 <p className="text-xs text-slate-500 mt-1 mb-5">Printable A4 PDF statement with CL Logo Badge.</p>
                 
                 <button 
-                  onClick={() => window.open('/api/reports/pdf', '_blank')}
+                  onClick={downloadA4PDF}
                   className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md transition-all"
                 >
                   <Download size={15} /> Download PDF
