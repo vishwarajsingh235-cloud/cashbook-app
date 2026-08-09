@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // Pure Serverless HTML-to-PDF Response Vector Document
     const pdfHtml = `
       <!DOCTYPE html>
       <html>
