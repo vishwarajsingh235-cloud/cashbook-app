@@ -34,7 +34,7 @@ export default function CashLedgerDashboard() {
   const [partyPhone, setPartyPhone] = useState('');
   const [txnType, setTxnType] = useState('CASH_IN');
   const [amount, setAmount] = useState('');
-  const [paymentMode, setPaymentMode] = useState('CASH');
+  const [paymentMode, setPaymentMode] = useState('Cash');
   const [remarks, setRemarks] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -46,22 +46,26 @@ export default function CashLedgerDashboard() {
   const [gstin, setGstin] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Load Initial Data from LocalStorage
+  // Load Saved Local Data
   useEffect(() => {
-    const savedTxns = localStorage.getItem('cl_transactions');
-    if (savedTxns) setTransactions(JSON.parse(savedTxns));
+    try {
+      const savedTxns = localStorage.getItem('cl_transactions');
+      if (savedTxns) setTransactions(JSON.parse(savedTxns));
 
-    const savedParties = localStorage.getItem('cl_parties');
-    if (savedParties) setParties(JSON.parse(savedParties));
+      const savedParties = localStorage.getItem('cl_parties');
+      if (savedParties) setParties(JSON.parse(savedParties));
 
-    const savedProfile = localStorage.getItem('cl_profile');
-    if (savedProfile) {
-      const p = JSON.parse(savedProfile);
-      setBusinessName(p.businessName || 'VERMA GENERAL STORE');
-      setPhone(p.phone || '9258089101');
-      setEmail(p.email || '');
-      setAddress(p.address || '');
-      setGstin(p.gstin || '');
+      const savedProfile = localStorage.getItem('cl_profile');
+      if (savedProfile) {
+        const p = JSON.parse(savedProfile);
+        setBusinessName(p.businessName || 'VERMA GENERAL STORE');
+        setPhone(p.phone || '9258089101');
+        setEmail(p.email || '');
+        setAddress(p.address || '');
+        setGstin(p.gstin || '');
+      }
+    } catch (e) {
+      console.error(e);
     }
   }, []);
 
@@ -76,28 +80,32 @@ export default function CashLedgerDashboard() {
 
   const netBalance = totalCashIn - totalCashOut;
 
-  // Add Transaction Entry
+  // Add Transaction Entry (No Backend Error Guaranteed)
   const handleAddTransaction = (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || parseFloat(amount) <= 0) return;
 
-    const newTxn = {
-      id: Date.now(),
-      party_id: activeTab === 'parties' && selectedParty ? selectedParty.id : null,
-      txn_type: txnType,
-      amount: parseFloat(amount),
-      payment_mode: paymentMode,
-      remarks: remarks || 'Cash Entry',
-      txn_date: new Date().toISOString()
-    };
+    try {
+      const newTxn = {
+        id: Date.now(),
+        party_id: activeTab === 'parties' && selectedParty ? selectedParty.id : null,
+        txn_type: txnType,
+        amount: parseFloat(amount),
+        payment_mode: paymentMode,
+        remarks: remarks || 'Cash Entry',
+        txn_date: new Date().toISOString()
+      };
 
-    const updated = [newTxn, ...transactions];
-    setTransactions(updated);
-    localStorage.setItem('cl_transactions', JSON.stringify(updated));
+      const updated = [newTxn, ...transactions];
+      setTransactions(updated);
+      localStorage.setItem('cl_transactions', JSON.stringify(updated));
 
-    setShowModal(false);
-    setAmount('');
-    setRemarks('');
+      setShowModal(false);
+      setAmount('');
+      setRemarks('');
+    } catch (err) {
+      alert('Error saving entry.');
+    }
   };
 
   // Add Party Account
@@ -105,20 +113,24 @@ export default function CashLedgerDashboard() {
     e.preventDefault();
     if (!partyName) return;
 
-    const newParty = {
-      id: Date.now(),
-      name: partyName,
-      phone: partyPhone
-    };
+    try {
+      const newParty = {
+        id: Date.now(),
+        name: partyName,
+        phone: partyPhone
+      };
 
-    const updated = [newParty, ...parties];
-    setParties(updated);
-    localStorage.setItem('cl_parties', JSON.stringify(updated));
-    setSelectedParty(newParty);
+      const updated = [newParty, ...parties];
+      setParties(updated);
+      localStorage.setItem('cl_parties', JSON.stringify(updated));
+      setSelectedParty(newParty);
 
-    setShowAddPartyModal(false);
-    setPartyName('');
-    setPartyPhone('');
+      setShowAddPartyModal(false);
+      setPartyName('');
+      setPartyPhone('');
+    } catch (err) {
+      alert('Error saving party.');
+    }
   };
 
   // Save Store Profile
@@ -130,7 +142,7 @@ export default function CashLedgerDashboard() {
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
-  // Delete All Records
+  // Clear Entries
   const handlePurgeData = () => {
     if (confirm('Are you sure you want to delete all transaction records?')) {
       localStorage.removeItem('cl_transactions');
@@ -208,7 +220,7 @@ export default function CashLedgerDashboard() {
 
         <div className="p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800">
           <div className="text-xs font-extrabold text-white mb-0.5 truncate">+91 {phone}</div>
-          <div className="text-[10px] text-emerald-400 font-bold uppercase">Live Offline Account</div>
+          <div className="text-[10px] text-emerald-400 font-bold uppercase">Active Standalone Account</div>
         </div>
       </aside>
 
@@ -395,7 +407,7 @@ export default function CashLedgerDashboard() {
                   <div className="md:col-span-2">
                     {selectedParty && (
                       <div>
-                        <h3 className="text-base font-extrabold text-slate-900 mb-4">{selectedParty.name} Statement</h3>
+                        <h3 className="text-base font-extrabold text-slate-900 mb-2">{selectedParty.name} Statement</h3>
                         <p className="text-xs text-slate-500 mb-4">Phone: {selectedParty.phone || 'N/A'}</p>
                       </div>
                     )}
