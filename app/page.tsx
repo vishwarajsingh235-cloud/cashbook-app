@@ -38,15 +38,15 @@ export default function CashLedgerDashboard() {
   const [remarks, setRemarks] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Profile Fields
-  const [businessName, setBusinessName] = useState('VERMA GENERAL STORE');
-  const [phone, setPhone] = useState('9258089101');
+  // Profile Fields (Customizable defaults)
+  const [businessName, setBusinessName] = useState('My Business');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [address, setAddress] = useState('Main Market, Sector 62');
+  const [address, setAddress] = useState('');
   const [gstin, setGstin] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Load Saved Local Data
+  // Load Saved Data
   useEffect(() => {
     try {
       const savedTxns = localStorage.getItem('cl_transactions');
@@ -58,8 +58,8 @@ export default function CashLedgerDashboard() {
       const savedProfile = localStorage.getItem('cl_profile');
       if (savedProfile) {
         const p = JSON.parse(savedProfile);
-        setBusinessName(p.businessName || 'VERMA GENERAL STORE');
-        setPhone(p.phone || '9258089101');
+        setBusinessName(p.businessName || 'My Business');
+        setPhone(p.phone || '');
         setEmail(p.email || '');
         setAddress(p.address || '');
         setGstin(p.gstin || '');
@@ -80,7 +80,7 @@ export default function CashLedgerDashboard() {
 
   const netBalance = totalCashIn - totalCashOut;
 
-  // Add Transaction Entry
+  // Add Transaction
   const handleAddTransaction = (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || parseFloat(amount) <= 0) return;
@@ -92,7 +92,7 @@ export default function CashLedgerDashboard() {
         txn_type: txnType,
         amount: parseFloat(amount),
         payment_mode: paymentMode,
-        remarks: remarks || 'Cash Entry',
+        remarks: remarks || 'Cash Transaction',
         txn_date: new Date().toISOString()
       };
 
@@ -104,7 +104,7 @@ export default function CashLedgerDashboard() {
       setAmount('');
       setRemarks('');
     } catch (err) {
-      alert('Error saving entry.');
+      alert('Failed to save entry.');
     }
   };
 
@@ -129,11 +129,11 @@ export default function CashLedgerDashboard() {
       setPartyName('');
       setPartyPhone('');
     } catch (err) {
-      alert('Error saving party.');
+      alert('Failed to save party.');
     }
   };
 
-  // Save Store Profile
+  // Save Profile Details
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     const profile = { businessName, phone, email, address, gstin };
@@ -142,9 +142,9 @@ export default function CashLedgerDashboard() {
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
-  // Clear Entries
+  // Clear All Data
   const handlePurgeData = () => {
-    if (confirm('Are you sure you want to delete all transaction records?')) {
+    if (confirm('Are you sure you want to clear all transaction records?')) {
       localStorage.removeItem('cl_transactions');
       localStorage.removeItem('cl_parties');
       setTransactions([]);
@@ -153,38 +153,52 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // REAL DIRECT PDF FILE DOWNLOAD (NO TAB, NO PRINT POPUP, NO CORRUPTION)
-  const downloadRealPDF = async () => {
+  // PDF Report Generator
+  const downloadPDF = async () => {
     const { default: jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
 
     const doc = new jsPDF('p', 'mm', 'a4');
 
-    // 1. Full Page Outer Frame Border
+    // Dynamic Initials for Logo Badge
+    const badgeText = businessName
+      .trim()
+      .split(' ')
+      .map(w => w[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase() || 'CB';
+
+    // Outer Frame Border
     doc.setDrawColor(15, 23, 42);
-    doc.setLineWidth(1);
+    doc.setLineWidth(0.8);
     doc.rect(8, 8, 194, 281);
 
-    // 2. Logo Badge ("CL")
+    // Logo Badge
     doc.setFillColor(15, 23, 42);
     doc.roundedRect(14, 14, 16, 16, 3, 3, 'F');
     doc.setTextColor(56, 189, 248);
-    doc.setFontSize(14);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('CL', 18, 24);
+    doc.text(badgeText, 17, 24);
 
-    // 3. Store Header Details
+    // Store Header Details
     doc.setTextColor(15, 23, 42);
     doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
     doc.text(businessName.toUpperCase(), 34, 20);
 
+    const contactLine = [
+      phone ? `Phone: +91 ${phone}` : '',
+      address ? `Address: ${address}` : ''
+    ].filter(Boolean).join(' | ');
+
     doc.setTextColor(100, 116, 139);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Phone: +91 ${phone} ${address ? '| ' + address : ''}`, 34, 26);
+    doc.text(contactLine || 'Statement Summary', 34, 26);
 
-    // 4. Header Title
+    // Document Title
     doc.setTextColor(2, 132, 199);
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
@@ -195,13 +209,12 @@ export default function CashLedgerDashboard() {
     doc.setFont('helvetica', 'normal');
     doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 196, 26, { align: 'right' });
 
-    // Divider Line
+    // Divider
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.5);
     doc.line(14, 34, 196, 34);
 
-    // 5. Summary Metric Cards
-    // Credit Box
+    // Metric Summary Cards
     doc.setFillColor(240, 253, 244);
     doc.setDrawColor(187, 247, 208);
     doc.roundedRect(14, 38, 56, 18, 2, 2, 'FD');
@@ -213,7 +226,6 @@ export default function CashLedgerDashboard() {
     doc.setFontSize(10);
     doc.text(`Rs. ${totalCashIn.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 18, 51);
 
-    // Debit Box
     doc.setFillColor(254, 242, 242);
     doc.setDrawColor(254, 202, 202);
     doc.roundedRect(74, 38, 56, 18, 2, 2, 'FD');
@@ -225,7 +237,6 @@ export default function CashLedgerDashboard() {
     doc.setFontSize(10);
     doc.text(`Rs. ${totalCashOut.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 78, 51);
 
-    // Balance Box
     doc.setFillColor(240, 249, 255);
     doc.setDrawColor(186, 230, 253);
     doc.roundedRect(134, 38, 62, 18, 2, 2, 'FD');
@@ -237,10 +248,10 @@ export default function CashLedgerDashboard() {
     doc.setFontSize(10);
     doc.text(`Rs. ${Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })} ${netBalance >= 0 ? 'Cr' : 'Dr'}`, 138, 51);
 
-    // 6. Data Table
+    // Data Table
     const tableData = transactions.map((t) => [
       new Date(t.txn_date).toLocaleDateString('en-IN'),
-      t.remarks || 'Cash Entry',
+      t.remarks || 'Cash Transaction',
       t.payment_mode || 'Cash',
       t.txn_type === 'CASH_OUT' ? parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-',
       t.txn_type === 'CASH_IN' ? parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-'
@@ -271,11 +282,11 @@ export default function CashLedgerDashboard() {
       margin: { left: 14, right: 14 }
     });
 
-    // 7. Footer
+    // Footer
     const finalY = (doc as any).lastAutoTable?.finalY || 100;
     doc.setTextColor(100, 116, 139);
     doc.setFontSize(7);
-    doc.text('* Computer Generated Statement. Powered by CashLedger Engine', 14, finalY + 12);
+    doc.text('* Computer Generated Statement', 14, finalY + 12);
 
     doc.setDrawColor(15, 23, 42);
     doc.line(150, finalY + 12, 196, finalY + 12);
@@ -284,8 +295,7 @@ export default function CashLedgerDashboard() {
     doc.setFont('helvetica', 'bold');
     doc.text('Authorized Signatory', 173, finalY + 16, { align: 'center' });
 
-    // Directly save .pdf binary file to user's Downloads folder
-    doc.save('CashLedger_Statement.pdf');
+    doc.save(`${businessName.replace(/[^a-zA-Z0-0]/g, '_')}_Statement.pdf`);
   };
 
   const filteredTransactions = transactions.filter(t => 
@@ -354,8 +364,8 @@ export default function CashLedgerDashboard() {
         </div>
 
         <div className="p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800">
-          <div className="text-xs font-extrabold text-white mb-0.5 truncate">+91 {phone}</div>
-          <div className="text-[10px] text-emerald-400 font-bold uppercase">Ready</div>
+          <div className="text-xs font-bold text-white mb-0.5 truncate">{businessName}</div>
+          <div className="text-[10px] text-emerald-400 font-bold uppercase">{phone ? `+91 ${phone}` : 'Active Session'}</div>
         </div>
       </aside>
 
@@ -364,10 +374,10 @@ export default function CashLedgerDashboard() {
         <header className="bg-white border-b border-slate-200/80 px-8 py-5 flex justify-between items-center shadow-sm">
           <div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-              {activeTab === 'daybook' && 'Cash In & Out Entries'}
-              {activeTab === 'parties' && 'Party Ledger Statements'}
+              {activeTab === 'daybook' && 'Cashbook Entries'}
+              {activeTab === 'parties' && 'Customer & Party Ledger'}
               {activeTab === 'reports' && 'Reports & Statements'}
-              {activeTab === 'settings' && 'Store Settings'}
+              {activeTab === 'settings' && 'Store Profile'}
             </h2>
             <p className="text-xs font-semibold text-slate-500 mt-0.5">{businessName}</p>
           </div>
@@ -394,7 +404,7 @@ export default function CashLedgerDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Credit (Cash In)</p>
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Cash In</p>
                     <h3 className="text-3xl font-black text-emerald-600 mt-1">
                       Rs. {totalCashIn.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
@@ -406,7 +416,7 @@ export default function CashLedgerDashboard() {
 
                 <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Debit (Cash Out)</p>
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Cash Out</p>
                     <h3 className="text-3xl font-black text-rose-600 mt-1">
                       Rs. {totalCashOut.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
@@ -442,7 +452,7 @@ export default function CashLedgerDashboard() {
                     <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
                     <input 
                       type="text" 
-                      placeholder="Search entry..." 
+                      placeholder="Search entries..." 
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-9 pr-4 py-1.5 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-semibold w-48 md:w-64 shadow-sm"
@@ -454,7 +464,7 @@ export default function CashLedgerDashboard() {
                   <thead>
                     <tr className="bg-slate-100/70 text-slate-600 text-[10px] uppercase font-black border-b border-slate-200">
                       <th className="p-4">Date & Time</th>
-                      <th className="p-4">Particulars / Details</th>
+                      <th className="p-4">Particulars / Remarks</th>
                       <th className="p-4">Payment Method</th>
                       <th className="p-4 text-right">Cash In (Rs.)</th>
                       <th className="p-4 text-right">Cash Out (Rs.)</th>
@@ -464,7 +474,7 @@ export default function CashLedgerDashboard() {
                     {filteredTransactions.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="text-center py-12 text-slate-400 font-medium">
-                          No records saved. Click <span className="text-emerald-600 font-bold">+ Cash In</span> or <span className="text-rose-600 font-bold">- Cash Out</span>.
+                          No transactions recorded yet. Click <span className="text-emerald-600 font-bold">+ Cash In</span> or <span className="text-rose-600 font-bold">- Cash Out</span> to add one.
                         </td>
                       </tr>
                     ) : (
@@ -473,7 +483,7 @@ export default function CashLedgerDashboard() {
                           <td className="p-4 text-slate-500 text-xs font-mono font-semibold">
                             {new Date(t.txn_date).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
                           </td>
-                          <td className="p-4 font-bold text-slate-900">{t.remarks || 'Cash Entry'}</td>
+                          <td className="p-4 font-bold text-slate-900">{t.remarks || 'Cash Transaction'}</td>
                           <td className="p-4">
                             <span className="px-2.5 py-1 bg-slate-100 border border-slate-200/80 text-slate-700 rounded-md text-[10px] font-black uppercase tracking-wider">
                               {t.payment_mode}
@@ -499,7 +509,7 @@ export default function CashLedgerDashboard() {
               <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">Party Accounts</h3>
-                  <p className="text-xs text-slate-500 font-semibold">Track customer and vendor ledger balances</p>
+                  <p className="text-xs text-slate-500 font-semibold">Manage customer and vendor ledger accounts</p>
                 </div>
                 <button 
                   onClick={() => setShowAddPartyModal(true)}
@@ -512,7 +522,7 @@ export default function CashLedgerDashboard() {
               {parties.length === 0 ? (
                 <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-2xl">
                   <Users size={44} className="mx-auto text-slate-300 mb-3" />
-                  <p className="font-bold text-slate-700 text-base">No Party Accounts</p>
+                  <p className="font-bold text-slate-700 text-base">No Party Accounts Added</p>
                   <button 
                     onClick={() => setShowAddPartyModal(true)}
                     className="mt-3 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
@@ -534,7 +544,7 @@ export default function CashLedgerDashboard() {
                         }`}
                       >
                         <h4 className="font-bold text-slate-900 text-sm">{p.name}</h4>
-                        <p className="text-[11px] text-slate-500 font-medium">{p.phone || 'No phone'}</p>
+                        <p className="text-[11px] text-slate-500 font-medium">{p.phone ? `Phone: ${p.phone}` : 'No phone specified'}</p>
                       </div>
                     ))}
                   </div>
@@ -542,8 +552,8 @@ export default function CashLedgerDashboard() {
                   <div className="md:col-span-2">
                     {selectedParty && (
                       <div>
-                        <h3 className="text-base font-extrabold text-slate-900 mb-2">{selectedParty.name} Statement</h3>
-                        <p className="text-xs text-slate-500 mb-4">Phone: {selectedParty.phone || 'N/A'}</p>
+                        <h3 className="text-base font-extrabold text-slate-900 mb-2">{selectedParty.name} Ledger</h3>
+                        <p className="text-xs text-slate-500 mb-4">{selectedParty.phone ? `Phone: ${selectedParty.phone}` : ''}</p>
                       </div>
                     )}
                   </div>
@@ -555,15 +565,15 @@ export default function CashLedgerDashboard() {
           {activeTab === 'reports' && (
             <div className="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-1">Download Account Statements</h3>
-              <p className="text-xs text-slate-500 mb-6">Download printable PDF statements</p>
+              <p className="text-xs text-slate-500 mb-6">Generate and download PDF account reports</p>
 
               <div className="p-6 border border-slate-200/80 rounded-2xl hover:border-sky-500 transition-all bg-slate-50/30 max-w-md">
                 <FileText size={32} className="text-sky-600 mb-3" />
                 <h4 className="font-bold text-slate-900 text-base">PDF Account Statement</h4>
-                <p className="text-xs text-slate-500 mt-1 mb-5">Printable A4 PDF statement with CL Logo Badge.</p>
+                <p className="text-xs text-slate-500 mt-1 mb-5">Formatted A4 PDF report for {businessName}.</p>
                 
                 <button 
-                  onClick={downloadRealPDF}
+                  onClick={downloadPDF}
                   className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md transition-all"
                 >
                   <Download size={15} /> Download PDF
@@ -574,22 +584,24 @@ export default function CashLedgerDashboard() {
 
           {activeTab === 'settings' && (
             <div className="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm max-w-2xl">
-              <h3 className="text-lg font-bold text-slate-900 mb-1">Store Details</h3>
+              <h3 className="text-lg font-bold text-slate-900 mb-1">Store & Business Details</h3>
+              <p className="text-xs text-slate-500 mb-6">Enter your business information to appear on PDF statements.</p>
 
               {saveSuccess && (
                 <div className="mb-4 p-3 bg-emerald-50 text-emerald-800 rounded-xl font-bold text-xs flex items-center gap-2">
-                  <CheckCircle2 size={16} /> Store Profile Updated!
+                  <CheckCircle2 size={16} /> Business Profile Saved
                 </div>
               )}
 
               <form onSubmit={handleSaveProfile} className="space-y-4">
                 <div>
-                  <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Shop / Firm Name</label>
+                  <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Business / Firm Name</label>
                   <input 
                     type="text" 
                     required
                     value={businessName} 
                     onChange={(e) => setBusinessName(e.target.value)}
+                    placeholder="Enter business name"
                     className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500" 
                   />
                 </div>
@@ -598,9 +610,20 @@ export default function CashLedgerDashboard() {
                   <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Phone Number</label>
                   <input 
                     type="text" 
-                    required
                     value={phone} 
                     onChange={(e) => setPhone(e.target.value)}
+                    placeholder="Enter contact number"
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500" 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Address</label>
+                  <input 
+                    type="text" 
+                    value={address} 
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Enter business address"
                     className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500" 
                   />
                 </div>
@@ -663,12 +686,12 @@ export default function CashLedgerDashboard() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Details / Remarks</label>
+                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Particulars / Remarks</label>
                 <input 
                   type="text" 
                   value={remarks} 
                   onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="e.g. pump income"
+                  placeholder="Enter entry details"
                   className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
@@ -700,12 +723,13 @@ export default function CashLedgerDashboard() {
             <h3 className="text-base font-extrabold uppercase mb-4 text-slate-900">Add New Party</h3>
             <form onSubmit={handleAddParty} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Party Name</label>
+                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Party / Customer Name</label>
                 <input 
                   type="text" 
                   required 
                   value={partyName} 
                   onChange={(e) => setPartyName(e.target.value)}
+                  placeholder="Enter party name"
                   className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
@@ -715,6 +739,7 @@ export default function CashLedgerDashboard() {
                   type="text" 
                   value={partyPhone} 
                   onChange={(e) => setPartyPhone(e.target.value)}
+                  placeholder="Enter phone number"
                   className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
