@@ -1,6 +1,5 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { 
   ArrowDownRight, 
   ArrowUpRight, 
@@ -20,25 +19,15 @@ import {
   Trash2
 } from 'lucide-react';
 
-// Express Backend URL for DB calls (Localhost or Production)
-const BACKEND_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-  ? 'http://localhost:5000'
-  : 'http://localhost:5000'; // Agar online backend host ho toh yahan URL badlein
-
 export default function CashLedgerDashboard() {
-  const [user] = useState({ phone: '9258089101', business_name: 'My Store' });
-
-  // App State
   const [activeTab, setActiveTab] = useState('daybook');
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [summary, setSummary] = useState({ totalCashIn: 0, totalCashOut: 0, netBalance: 0 });
-  const [showModal, setShowModal] = useState(false);
-  const [showAddPartyModal, setShowAddPartyModal] = useState(false);
-
-  // Party Management State
   const [parties, setParties] = useState<any[]>([]);
   const [selectedParty, setSelectedParty] = useState<any>(null);
-  const [partyLedger, setPartyLedger] = useState<any[]>([]);
+
+  // Modals
+  const [showModal, setShowModal] = useState(false);
+  const [showAddPartyModal, setShowAddPartyModal] = useState(false);
 
   // Form Fields
   const [partyName, setPartyName] = useState('');
@@ -49,133 +38,106 @@ export default function CashLedgerDashboard() {
   const [remarks, setRemarks] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Store Profile State
-  const [businessName, setBusinessName] = useState('My Store');
+  // Profile Fields
+  const [businessName, setBusinessName] = useState('VERMA GENERAL STORE');
   const [phone, setPhone] = useState('9258089101');
   const [email, setEmail] = useState('');
-  const [address, setAddress] = useState('');
+  const [address, setAddress] = useState('Main Market, Sector 62');
   const [gstin, setGstin] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Load Initial Data from LocalStorage
   useEffect(() => {
-    fetchDaybook();
-    fetchParties();
-    fetchProfile();
+    const savedTxns = localStorage.getItem('cl_transactions');
+    if (savedTxns) setTransactions(JSON.parse(savedTxns));
+
+    const savedParties = localStorage.getItem('cl_parties');
+    if (savedParties) setParties(JSON.parse(savedParties));
+
+    const savedProfile = localStorage.getItem('cl_profile');
+    if (savedProfile) {
+      const p = JSON.parse(savedProfile);
+      setBusinessName(p.businessName || 'VERMA GENERAL STORE');
+      setPhone(p.phone || '9258089101');
+      setEmail(p.email || '');
+      setAddress(p.address || '');
+      setGstin(p.gstin || '');
+    }
   }, []);
 
-  const fetchProfile = async () => {
-    try {
-      const res = await axios.get(`${BACKEND_URL}/api/users/profile`);
-      if (res.data) {
-        setBusinessName(res.data.business_name || 'My Store');
-        setPhone(res.data.phone || '9258089101');
-        setEmail(res.data.email || '');
-        setAddress(res.data.address || '');
-        setGstin(res.data.gstin || '');
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  // Summary Calculations
+  const totalCashIn = transactions
+    .filter(t => t.txn_type === 'CASH_IN')
+    .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
 
-  const fetchDaybook = async () => {
-    try {
-      const res = await axios.get(`${BACKEND_URL}/api/transactions/daybook`);
-      setTransactions(res.data.transactions || []);
-      setSummary(res.data.summary || { totalCashIn: 0, totalCashOut: 0, netBalance: 0 });
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  const totalCashOut = transactions
+    .filter(t => t.txn_type === 'CASH_OUT')
+    .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
 
-  const fetchParties = async () => {
-    try {
-      const res = await axios.get(`${BACKEND_URL}/api/parties/list`);
-      setParties(res.data || []);
-      if (res.data && res.data.length > 0 && !selectedParty) {
-        fetchPartyLedger(res.data[0].id);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  const netBalance = totalCashIn - totalCashOut;
 
-  const fetchPartyLedger = async (partyId: number) => {
-    try {
-      const res = await axios.get(`${BACKEND_URL}/api/parties/ledger/${partyId}`);
-      setSelectedParty(res.data.party);
-      setPartyLedger(res.data.transactions || []);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleAddParty = async (e: React.FormEvent) => {
+  // Add Transaction Entry
+  const handleAddTransaction = (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      await axios.post(`${BACKEND_URL}/api/parties/add`, {
-        name: partyName,
-        phone: partyPhone
-      });
-      setShowAddPartyModal(false);
-      setPartyName('');
-      setPartyPhone('');
-      fetchParties();
-    } catch (err) {
-      alert('Error saving party details.');
-    }
+    if (!amount || parseFloat(amount) <= 0) return;
+
+    const newTxn = {
+      id: Date.now(),
+      party_id: activeTab === 'parties' && selectedParty ? selectedParty.id : null,
+      txn_type: txnType,
+      amount: parseFloat(amount),
+      payment_mode: paymentMode,
+      remarks: remarks || 'Cash Entry',
+      txn_date: new Date().toISOString()
+    };
+
+    const updated = [newTxn, ...transactions];
+    setTransactions(updated);
+    localStorage.setItem('cl_transactions', JSON.stringify(updated));
+
+    setShowModal(false);
+    setAmount('');
+    setRemarks('');
   };
 
-  const handleSaveProfile = async (e: React.FormEvent) => {
+  // Add Party Account
+  const handleAddParty = (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      await axios.put(`${BACKEND_URL}/api/users/profile`, {
-        business_name: businessName,
-        phone,
-        email,
-        address,
-        gstin
-      });
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err) {
-      alert('Failed to update store settings.');
-    }
+    if (!partyName) return;
+
+    const newParty = {
+      id: Date.now(),
+      name: partyName,
+      phone: partyPhone
+    };
+
+    const updated = [newParty, ...parties];
+    setParties(updated);
+    localStorage.setItem('cl_parties', JSON.stringify(updated));
+    setSelectedParty(newParty);
+
+    setShowAddPartyModal(false);
+    setPartyName('');
+    setPartyPhone('');
   };
 
-  const handleAddTransaction = async (e: React.FormEvent) => {
+  // Save Store Profile
+  const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      await axios.post(`${BACKEND_URL}/api/transactions/add`, {
-        party_id: activeTab === 'parties' && selectedParty ? selectedParty.id : null,
-        txn_type: txnType,
-        amount: parseFloat(amount),
-        payment_mode: paymentMode,
-        remarks: remarks
-      });
-
-      setShowModal(false);
-      setAmount('');
-      setRemarks('');
-      fetchDaybook();
-      if (selectedParty) fetchPartyLedger(selectedParty.id);
-      fetchParties();
-    } catch (err) {
-      alert('Failed to save transaction entry. Ensure backend server is running.');
-    }
+    const profile = { businessName, phone, email, address, gstin };
+    localStorage.setItem('cl_profile', JSON.stringify(profile));
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
   };
 
-  const handlePurgeData = async () => {
+  // Delete All Records
+  const handlePurgeData = () => {
     if (confirm('Are you sure you want to delete all transaction records?')) {
-      try {
-        await axios.delete(`${BACKEND_URL}/api/users/purge-data`);
-        alert('All records deleted successfully.');
-        fetchDaybook();
-        fetchParties();
-        setSelectedParty(null);
-      } catch (err) {
-        alert('Error purging data.');
-      }
+      localStorage.removeItem('cl_transactions');
+      localStorage.removeItem('cl_parties');
+      setTransactions([]);
+      setParties([]);
+      setSelectedParty(null);
     }
   };
 
@@ -186,6 +148,11 @@ export default function CashLedgerDashboard() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
+      <style jsx global>{`
+        [data-nextjs-toast], [data-nextjs-dialog-overlay], #nextjs-dev-indicator { display: none !important; }
+      `}</style>
+
+      {/* Sidebar */}
       <aside className="w-64 bg-slate-950 text-white flex flex-col justify-between hidden md:flex border-r border-slate-800">
         <div>
           <div className="p-6 border-b border-slate-800/80">
@@ -240,11 +207,12 @@ export default function CashLedgerDashboard() {
         </div>
 
         <div className="p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800">
-          <div className="text-xs font-extrabold text-white mb-0.5 truncate">+91 {user?.phone}</div>
-          <div className="text-[10px] text-emerald-400 font-bold uppercase">Active Account</div>
+          <div className="text-xs font-extrabold text-white mb-0.5 truncate">+91 {phone}</div>
+          <div className="text-[10px] text-emerald-400 font-bold uppercase">Live Offline Account</div>
         </div>
       </aside>
 
+      {/* Main Workspace */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="bg-white border-b border-slate-200/80 px-8 py-5 flex justify-between items-center shadow-sm">
           <div>
@@ -254,7 +222,7 @@ export default function CashLedgerDashboard() {
               {activeTab === 'reports' && 'Reports & Statements'}
               {activeTab === 'settings' && 'Store Settings'}
             </h2>
-            <p className="text-xs font-semibold text-slate-500 mt-0.5">Manage daily cash flow and accounts</p>
+            <p className="text-xs font-semibold text-slate-500 mt-0.5">{businessName}</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -281,7 +249,7 @@ export default function CashLedgerDashboard() {
                   <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Credit (Cash In)</p>
                     <h3 className="text-3xl font-black text-emerald-600 mt-1">
-                      Rs. {summary.totalCashIn.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      Rs. {totalCashIn.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
                   </div>
                   <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100">
@@ -293,7 +261,7 @@ export default function CashLedgerDashboard() {
                   <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Debit (Cash Out)</p>
                     <h3 className="text-3xl font-black text-rose-600 mt-1">
-                      Rs. {summary.totalCashOut.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      Rs. {totalCashOut.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
                   </div>
                   <div className="p-3.5 bg-rose-50 text-rose-600 rounded-2xl border border-rose-100">
@@ -304,8 +272,8 @@ export default function CashLedgerDashboard() {
                 <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
                   <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Net Balance</p>
-                    <h3 className={`text-3xl font-black mt-1 ${summary.netBalance >= 0 ? 'text-sky-600' : 'text-rose-600'}`}>
-                      Rs. {summary.netBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    <h3 className={`text-3xl font-black mt-1 ${netBalance >= 0 ? 'text-sky-600' : 'text-rose-600'}`}>
+                      Rs. {netBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
                   </div>
                   <div className="p-3.5 bg-sky-50 text-sky-600 rounded-2xl border border-sky-100">
@@ -349,7 +317,7 @@ export default function CashLedgerDashboard() {
                     {filteredTransactions.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="text-center py-12 text-slate-400 font-medium">
-                          No records found. Click <span className="text-emerald-600 font-bold">+ Cash In</span> or <span className="text-rose-600 font-bold">- Cash Out</span>.
+                          No records saved. Click <span className="text-emerald-600 font-bold">+ Cash In</span> or <span className="text-rose-600 font-bold">- Cash Out</span>.
                         </td>
                       </tr>
                     ) : (
@@ -379,38 +347,134 @@ export default function CashLedgerDashboard() {
             </>
           )}
 
+          {activeTab === 'parties' && (
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
+              <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Party Accounts</h3>
+                  <p className="text-xs text-slate-500 font-semibold">Track customer and vendor ledger balances</p>
+                </div>
+                <button 
+                  onClick={() => setShowAddPartyModal(true)}
+                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center gap-2"
+                >
+                  <UserPlus size={16} /> Add Party Account
+                </button>
+              </div>
+
+              {parties.length === 0 ? (
+                <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-2xl">
+                  <Users size={44} className="mx-auto text-slate-300 mb-3" />
+                  <p className="font-bold text-slate-700 text-base">No Party Accounts</p>
+                  <button 
+                    onClick={() => setShowAddPartyModal(true)}
+                    className="mt-3 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
+                  >
+                    + Add Party
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 border-r border-slate-100">
+                    {parties.map((p) => (
+                      <div 
+                        key={p.id}
+                        onClick={() => setSelectedParty(p)}
+                        className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                          selectedParty && selectedParty.id === p.id 
+                            ? 'border-sky-500 bg-sky-50/50 shadow-sm' 
+                            : 'border-slate-200/80 hover:bg-slate-50'
+                        }`}
+                      >
+                        <h4 className="font-bold text-slate-900 text-sm">{p.name}</h4>
+                        <p className="text-[11px] text-slate-500 font-medium">{p.phone || 'No phone'}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="md:col-span-2">
+                    {selectedParty && (
+                      <div>
+                        <h3 className="text-base font-extrabold text-slate-900 mb-4">{selectedParty.name} Statement</h3>
+                        <p className="text-xs text-slate-500 mb-4">Phone: {selectedParty.phone || 'N/A'}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'reports' && (
             <div className="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-1">Download Account Statements</h3>
-              <p className="text-xs text-slate-500 mb-6">Download printable PDF statements and Excel files</p>
+              <p className="text-xs text-slate-500 mb-6">Download printable PDF statements</p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-6 border border-slate-200/80 rounded-2xl hover:border-sky-500 transition-all bg-slate-50/30">
-                  <FileText size={32} className="text-sky-600 mb-3" />
-                  <h4 className="font-bold text-slate-900 text-base">PDF Account Statement</h4>
-                  <p className="text-xs text-slate-500 mt-1 mb-5">Printable A4 PDF statement with complete transaction breakdown.</p>
-                  
-                  <button 
-                    onClick={() => window.open('/api/reports/pdf', '_blank')}
-                    className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md transition-all"
-                  >
-                    <Download size={15} /> Download PDF
-                  </button>
-                </div>
-
-                <div className="p-6 border border-slate-200/80 rounded-2xl hover:border-emerald-500 transition-all bg-slate-50/30">
-                  <FileSpreadsheet size={32} className="text-emerald-600 mb-3" />
-                  <h4 className="font-bold text-slate-900 text-base">Excel Worksheet (.XLSX)</h4>
-                  <p className="text-xs text-slate-500 mt-1 mb-5">Spreadsheet format for MS Excel and accounting software.</p>
-                  
-                  <button 
-                    onClick={() => window.open(`${BACKEND_URL}/api/reports/excel`, '_blank')}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md transition-all"
-                  >
-                    <Download size={15} /> Download Excel File
-                  </button>
-                </div>
+              <div className="p-6 border border-slate-200/80 rounded-2xl hover:border-sky-500 transition-all bg-slate-50/30 max-w-md">
+                <FileText size={32} className="text-sky-600 mb-3" />
+                <h4 className="font-bold text-slate-900 text-base">PDF Account Statement</h4>
+                <p className="text-xs text-slate-500 mt-1 mb-5">Printable A4 PDF statement with CL Logo Badge.</p>
+                
+                <button 
+                  onClick={() => window.open('/api/reports/pdf', '_blank')}
+                  className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md transition-all"
+                >
+                  <Download size={15} /> Download PDF
+                </button>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm max-w-2xl">
+              <h3 className="text-lg font-bold text-slate-900 mb-1">Store Details</h3>
+
+              {saveSuccess && (
+                <div className="mb-4 p-3 bg-emerald-50 text-emerald-800 rounded-xl font-bold text-xs flex items-center gap-2">
+                  <CheckCircle2 size={16} /> Store Profile Updated!
+                </div>
+              )}
+
+              <form onSubmit={handleSaveProfile} className="space-y-4">
+                <div>
+                  <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Shop / Firm Name</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={businessName} 
+                    onChange={(e) => setBusinessName(e.target.value)}
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500" 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Phone Number</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={phone} 
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500" 
+                  />
+                </div>
+
+                <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+                  <button 
+                    type="submit"
+                    className="bg-slate-950 text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
+                  >
+                    Save Changes
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={handlePurgeData}
+                    className="text-rose-600 hover:bg-rose-50 px-4 py-2 rounded-xl text-xs font-bold uppercase flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 size={14} /> Clear All Entries
+                  </button>
+                </div>
+              </form>
             </div>
           )}
         </main>
@@ -425,7 +489,7 @@ export default function CashLedgerDashboard() {
             </h3>
             <form onSubmit={handleAddTransaction} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-wider mb-1">Amount (Rs.)</label>
+                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Amount (Rs.)</label>
                 <input 
                   type="number" 
                   step="0.01"
@@ -433,32 +497,32 @@ export default function CashLedgerDashboard() {
                   value={amount} 
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm"
+                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-wider mb-1">Payment Method</label>
+                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Payment Method</label>
                 <select 
                   value={paymentMode} 
                   onChange={(e) => setPaymentMode(e.target.value)}
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm"
+                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500"
                 >
-                  <option value="CASH">Cash</option>
-                  <option value="UPI">UPI / Online Transfer</option>
-                  <option value="BANK">Bank Transfer</option>
-                  <option value="CHEQUE">Cheque</option>
+                  <option value="Cash">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Bank">Bank Transfer</option>
+                  <option value="Cheque">Cheque</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-wider mb-1">Details / Remarks</label>
+                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Details / Remarks</label>
                 <input 
                   type="text" 
                   value={remarks} 
                   onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="e.g. Purchased Supplies (Invoice #804)"
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm"
+                  placeholder="e.g. pump income"
+                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
 
@@ -475,6 +539,51 @@ export default function CashLedgerDashboard() {
                   className={`px-5 py-2 text-white rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer ${txnType === 'CASH_IN' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}`}
                 >
                   Save Entry
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Party Modal */}
+      {showAddPartyModal && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
+            <h3 className="text-base font-extrabold uppercase mb-4 text-slate-900">Add New Party</h3>
+            <form onSubmit={handleAddParty} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Party Name</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={partyName} 
+                  onChange={(e) => setPartyName(e.target.value)}
+                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Phone Number</label>
+                <input 
+                  type="text" 
+                  value={partyPhone} 
+                  onChange={(e) => setPartyPhone(e.target.value)}
+                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button 
+                  type="button" 
+                  onClick={() => setShowAddPartyModal(false)}
+                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-5 py-2 text-white bg-sky-600 hover:bg-sky-700 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
+                >
+                  Save Party
                 </button>
               </div>
             </form>
