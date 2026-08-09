@@ -1,7 +1,5 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { 
   ArrowDownRight, 
   ArrowUpRight, 
@@ -155,11 +153,14 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // INSTANT NATIVE A4 PDF DOWNLOAD (Bypasses Backend/Vercel Routing Completely)
-  const downloadA4PDF = () => {
+  // REAL DIRECT PDF FILE DOWNLOAD (NO TAB, NO PRINT POPUP, NO CORRUPTION)
+  const downloadRealPDF = async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+
     const doc = new jsPDF('p', 'mm', 'a4');
 
-    // 1. Full Page Border
+    // 1. Full Page Outer Frame Border
     doc.setDrawColor(15, 23, 42);
     doc.setLineWidth(1);
     doc.rect(8, 8, 194, 281);
@@ -183,7 +184,7 @@ export default function CashLedgerDashboard() {
     doc.setFont('helvetica', 'normal');
     doc.text(`Phone: +91 ${phone} ${address ? '| ' + address : ''}`, 34, 26);
 
-    // 4. Statement Header Title
+    // 4. Header Title
     doc.setTextColor(2, 132, 199);
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
@@ -194,13 +195,13 @@ export default function CashLedgerDashboard() {
     doc.setFont('helvetica', 'normal');
     doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 196, 26, { align: 'right' });
 
-    // Divider
+    // Divider Line
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.5);
     doc.line(14, 34, 196, 34);
 
-    // 5. Summary Metrics Boxes
-    // Total Credit (Green Box)
+    // 5. Summary Metric Cards
+    // Credit Box
     doc.setFillColor(240, 253, 244);
     doc.setDrawColor(187, 247, 208);
     doc.roundedRect(14, 38, 56, 18, 2, 2, 'FD');
@@ -212,7 +213,7 @@ export default function CashLedgerDashboard() {
     doc.setFontSize(10);
     doc.text(`Rs. ${totalCashIn.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 18, 51);
 
-    // Total Debit (Red Box)
+    // Debit Box
     doc.setFillColor(254, 242, 242);
     doc.setDrawColor(254, 202, 202);
     doc.roundedRect(74, 38, 56, 18, 2, 2, 'FD');
@@ -224,7 +225,7 @@ export default function CashLedgerDashboard() {
     doc.setFontSize(10);
     doc.text(`Rs. ${totalCashOut.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 78, 51);
 
-    // Net Balance (Blue Box)
+    // Balance Box
     doc.setFillColor(240, 249, 255);
     doc.setDrawColor(186, 230, 253);
     doc.roundedRect(134, 38, 62, 18, 2, 2, 'FD');
@@ -236,7 +237,7 @@ export default function CashLedgerDashboard() {
     doc.setFontSize(10);
     doc.text(`Rs. ${Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })} ${netBalance >= 0 ? 'Cr' : 'Dr'}`, 138, 51);
 
-    // 6. Table Generation
+    // 6. Data Table
     const tableData = transactions.map((t) => [
       new Date(t.txn_date).toLocaleDateString('en-IN'),
       t.remarks || 'Cash Entry',
@@ -254,8 +255,7 @@ export default function CashLedgerDashboard() {
         fillColor: [15, 23, 42],
         textColor: [255, 255, 255],
         fontSize: 8,
-        fontStyle: 'bold',
-        halign: 'left'
+        fontStyle: 'bold'
       },
       bodyStyles: {
         fontSize: 8,
@@ -272,7 +272,7 @@ export default function CashLedgerDashboard() {
     });
 
     // 7. Footer
-    const finalY = (doc as any).lastAutoTable.finalY || 100;
+    const finalY = (doc as any).lastAutoTable?.finalY || 100;
     doc.setTextColor(100, 116, 139);
     doc.setFontSize(7);
     doc.text('* Computer Generated Statement. Powered by CashLedger Engine', 14, finalY + 12);
@@ -284,7 +284,7 @@ export default function CashLedgerDashboard() {
     doc.setFont('helvetica', 'bold');
     doc.text('Authorized Signatory', 173, finalY + 16, { align: 'center' });
 
-    // Force Save File Direct to Disk
+    // Directly save .pdf binary file to user's Downloads folder
     doc.save('CashLedger_Statement.pdf');
   };
 
@@ -355,7 +355,7 @@ export default function CashLedgerDashboard() {
 
         <div className="p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800">
           <div className="text-xs font-extrabold text-white mb-0.5 truncate">+91 {phone}</div>
-          <div className="text-[10px] text-emerald-400 font-bold uppercase">Standalone Offline Ready</div>
+          <div className="text-[10px] text-emerald-400 font-bold uppercase">Ready</div>
         </div>
       </aside>
 
@@ -563,7 +563,7 @@ export default function CashLedgerDashboard() {
                 <p className="text-xs text-slate-500 mt-1 mb-5">Printable A4 PDF statement with CL Logo Badge.</p>
                 
                 <button 
-                  onClick={downloadA4PDF}
+                  onClick={downloadRealPDF}
                   className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md transition-all"
                 >
                   <Download size={15} /> Download PDF
