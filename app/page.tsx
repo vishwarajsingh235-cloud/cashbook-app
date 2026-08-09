@@ -20,6 +20,11 @@ import {
   Trash2
 } from 'lucide-react';
 
+// Express Backend URL for DB calls (Localhost or Production)
+const BACKEND_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+  ? 'http://localhost:5000'
+  : 'http://localhost:5000'; // Agar online backend host ho toh yahan URL badlein
+
 export default function CashLedgerDashboard() {
   const [user] = useState({ phone: '9258089101', business_name: 'My Store' });
 
@@ -60,7 +65,7 @@ export default function CashLedgerDashboard() {
 
   const fetchProfile = async () => {
     try {
-      const res = await axios.get('/api/users/profile');
+      const res = await axios.get(`${BACKEND_URL}/api/users/profile`);
       if (res.data) {
         setBusinessName(res.data.business_name || 'My Store');
         setPhone(res.data.phone || '9258089101');
@@ -75,7 +80,7 @@ export default function CashLedgerDashboard() {
 
   const fetchDaybook = async () => {
     try {
-      const res = await axios.get('/api/transactions/daybook');
+      const res = await axios.get(`${BACKEND_URL}/api/transactions/daybook`);
       setTransactions(res.data.transactions || []);
       setSummary(res.data.summary || { totalCashIn: 0, totalCashOut: 0, netBalance: 0 });
     } catch (err) {
@@ -85,7 +90,7 @@ export default function CashLedgerDashboard() {
 
   const fetchParties = async () => {
     try {
-      const res = await axios.get('/api/parties/list');
+      const res = await axios.get(`${BACKEND_URL}/api/parties/list`);
       setParties(res.data || []);
       if (res.data && res.data.length > 0 && !selectedParty) {
         fetchPartyLedger(res.data[0].id);
@@ -97,7 +102,7 @@ export default function CashLedgerDashboard() {
 
   const fetchPartyLedger = async (partyId: number) => {
     try {
-      const res = await axios.get(`/api/parties/ledger/${partyId}`);
+      const res = await axios.get(`${BACKEND_URL}/api/parties/ledger/${partyId}`);
       setSelectedParty(res.data.party);
       setPartyLedger(res.data.transactions || []);
     } catch (err) {
@@ -108,7 +113,7 @@ export default function CashLedgerDashboard() {
   const handleAddParty = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post('/api/parties/add', {
+      await axios.post(`${BACKEND_URL}/api/parties/add`, {
         name: partyName,
         phone: partyPhone
       });
@@ -124,7 +129,7 @@ export default function CashLedgerDashboard() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.put('/api/users/profile', {
+      await axios.put(`${BACKEND_URL}/api/users/profile`, {
         business_name: businessName,
         phone,
         email,
@@ -141,7 +146,7 @@ export default function CashLedgerDashboard() {
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post('/api/transactions/add', {
+      await axios.post(`${BACKEND_URL}/api/transactions/add`, {
         party_id: activeTab === 'parties' && selectedParty ? selectedParty.id : null,
         txn_type: txnType,
         amount: parseFloat(amount),
@@ -156,14 +161,14 @@ export default function CashLedgerDashboard() {
       if (selectedParty) fetchPartyLedger(selectedParty.id);
       fetchParties();
     } catch (err) {
-      alert('Failed to save transaction entry.');
+      alert('Failed to save transaction entry. Ensure backend server is running.');
     }
   };
 
   const handlePurgeData = async () => {
     if (confirm('Are you sure you want to delete all transaction records?')) {
       try {
-        await axios.delete('/api/users/purge-data');
+        await axios.delete(`${BACKEND_URL}/api/users/purge-data`);
         alert('All records deleted successfully.');
         fetchDaybook();
         fetchParties();
@@ -181,14 +186,6 @@ export default function CashLedgerDashboard() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
-      {/* Hide Next.js Dev Indicator */}
-      <style jsx global>{`
-        [data-nextjs-toast], [data-nextjs-dialog-overlay], #nextjs-dev-indicator {
-          display: none !important;
-        }
-      `}</style>
-
-      {/* Sidebar */}
       <aside className="w-64 bg-slate-950 text-white flex flex-col justify-between hidden md:flex border-r border-slate-800">
         <div>
           <div className="p-6 border-b border-slate-800/80">
@@ -248,7 +245,6 @@ export default function CashLedgerDashboard() {
         </div>
       </aside>
 
-      {/* Main Workspace */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="bg-white border-b border-slate-200/80 px-8 py-5 flex justify-between items-center shadow-sm">
           <div>
@@ -383,145 +379,6 @@ export default function CashLedgerDashboard() {
             </>
           )}
 
-          {activeTab === 'parties' && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
-              <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">Party Accounts</h3>
-                  <p className="text-xs text-slate-500 font-semibold">Track customer and vendor ledger balances</p>
-                </div>
-                <button 
-                  onClick={() => setShowAddPartyModal(true)}
-                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center gap-2"
-                >
-                  <UserPlus size={16} /> Add Party Account
-                </button>
-              </div>
-
-              {parties.length === 0 ? (
-                <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-2xl">
-                  <Users size={44} className="mx-auto text-slate-300 mb-3" />
-                  <p className="font-bold text-slate-700 text-base">No Party Accounts</p>
-                  <p className="text-xs text-slate-400 mt-1 mb-4">Add a customer or vendor account to manage balances.</p>
-                  <button 
-                    onClick={() => setShowAddPartyModal(true)}
-                    className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer"
-                  >
-                    + Add Party
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 border-r border-slate-100">
-                    {parties.map((p) => {
-                      const partyNetBalance = parseFloat(p.total_given) - parseFloat(p.total_received);
-                      const isSelected = selectedParty && selectedParty.id === p.id;
-                      return (
-                        <div 
-                          key={p.id}
-                          onClick={() => fetchPartyLedger(p.id)}
-                          className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
-                            isSelected 
-                              ? 'border-sky-500 bg-sky-50/50 shadow-sm' 
-                              : 'border-slate-200/80 hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h4 className="font-bold text-slate-900 text-sm">{p.name}</h4>
-                              <p className="text-[11px] text-slate-500 font-medium">{p.phone || 'No phone'}</p>
-                            </div>
-                            <div className="text-right">
-                              <span className={`text-xs font-black ${partyNetBalance >= 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                                Rs. {Math.abs(partyNetBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                              </span>
-                              <div className="text-[9px] font-extrabold uppercase text-slate-400">
-                                {partyNetBalance >= 0 ? 'RECEIVABLE (DR)' : 'PAYABLE (CR)'}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="md:col-span-2 flex flex-col justify-between">
-                    {!selectedParty ? (
-                      <div className="text-center py-20 text-slate-400 text-xs font-semibold">
-                        Select a party from the left panel to view transactions.
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
-                          <div>
-                            <h3 className="text-base font-extrabold text-slate-900">{selectedParty.name}</h3>
-                            <p className="text-xs text-slate-500 font-semibold">Contact: {selectedParty.phone || 'N/A'}</p>
-                          </div>
-
-                          <div className="flex gap-2">
-                            <button 
-                              onClick={() => { setTxnType('CASH_OUT'); setShowModal(true); }}
-                              className="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm cursor-pointer"
-                            >
-                              <Minus size={14} /> Debit (Paid)
-                            </button>
-                            <button 
-                              onClick={() => { setTxnType('CASH_IN'); setShowModal(true); }}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm cursor-pointer"
-                            >
-                              <Plus size={14} /> Credit (Received)
-                            </button>
-                          </div>
-                        </div>
-
-                        <table className="w-full text-left border-collapse">
-                          <thead>
-                            <tr className="bg-slate-100/70 text-slate-600 text-[10px] uppercase font-black border-b border-slate-200">
-                              <th className="p-3">Date</th>
-                              <th className="p-3">Particulars / Details</th>
-                              <th className="p-3">Mode</th>
-                              <th className="p-3 text-right">Debit (Rs.)</th>
-                              <th className="p-3 text-right">Credit (Rs.)</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 text-sm font-medium text-slate-800">
-                            {partyLedger.length === 0 ? (
-                              <tr>
-                                <td colSpan={5} className="text-center py-10 text-slate-400 font-medium text-xs">
-                                  No transaction records found for this party.
-                                </td>
-                              </tr>
-                            ) : (
-                              partyLedger.map((t) => (
-                                <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
-                                  <td className="p-3 text-slate-500 text-xs font-mono font-semibold">
-                                    {new Date(t.txn_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                  </td>
-                                  <td className="p-3 font-bold text-slate-900">{t.remarks || 'Cash Transaction'}</td>
-                                  <td className="p-3">
-                                    <span className="px-2 py-0.5 bg-slate-100 border border-slate-200/80 text-slate-700 rounded text-[10px] font-black uppercase">
-                                      {t.payment_mode}
-                                    </span>
-                                  </td>
-                                  <td className="p-3 text-right font-bold text-rose-600">
-                                    {t.txn_type === 'CASH_OUT' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
-                                  </td>
-                                  <td className="p-3 text-right font-bold text-emerald-600">
-                                    {t.txn_type === 'CASH_IN' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
-                                  </td>
-                                </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {activeTab === 'reports' && (
             <div className="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-1">Download Account Statements</h3>
@@ -547,7 +404,7 @@ export default function CashLedgerDashboard() {
                   <p className="text-xs text-slate-500 mt-1 mb-5">Spreadsheet format for MS Excel and accounting software.</p>
                   
                   <button 
-                    onClick={() => window.open('/api/reports/excel', '_blank')}
+                    onClick={() => window.open(`${BACKEND_URL}/api/reports/excel`, '_blank')}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md transition-all"
                   >
                     <Download size={15} /> Download Excel File
@@ -556,150 +413,8 @@ export default function CashLedgerDashboard() {
               </div>
             </div>
           )}
-
-          {activeTab === 'settings' && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm max-w-2xl">
-              <h3 className="text-lg font-bold text-slate-900 mb-1">Store Details</h3>
-              <p className="text-xs text-slate-500 mb-6">Manage shop name, phone number, and address printed on PDF statements.</p>
-
-              {saveSuccess && (
-                <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-bold text-xs flex items-center gap-2">
-                  <CheckCircle2 size={16} /> Details saved successfully.
-                </div>
-              )}
-
-              <form onSubmit={handleSaveProfile} className="space-y-4">
-                <div>
-                  <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Shop / Firm Name</label>
-                  <input 
-                    type="text" 
-                    required
-                    value={businessName} 
-                    onChange={(e) => setBusinessName(e.target.value)}
-                    placeholder="e.g. Verma Traders" 
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm" 
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Phone Number</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={phone} 
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="9876543210" 
-                      className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm" 
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Email Address</label>
-                    <input 
-                      type="email" 
-                      value={email} 
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="store@email.com" 
-                      className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm" 
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">GSTIN Number (Optional)</label>
-                  <input 
-                    type="text" 
-                    value={gstin} 
-                    onChange={(e) => setGstin(e.target.value)}
-                    placeholder="07AAAAA0000A1Z5" 
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm" 
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Shop Address</label>
-                  <textarea 
-                    rows={2}
-                    value={address} 
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Shop No, Main Market, City..." 
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm" 
-                  ></textarea>
-                </div>
-
-                <div className="flex justify-between items-center pt-4 border-t border-slate-100">
-                  <button 
-                    type="submit"
-                    className="bg-slate-950 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer transition-all"
-                  >
-                    Save Changes
-                  </button>
-
-                  <button 
-                    type="button"
-                    onClick={handlePurgeData}
-                    className="text-rose-600 hover:bg-rose-50 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Trash2 size={14} /> Delete All Records
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
         </main>
       </div>
-
-      {/* Add Party Modal */}
-      {showAddPartyModal && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
-            <h3 className="text-base font-extrabold uppercase tracking-wider mb-4 text-slate-900">
-              Add New Party
-            </h3>
-            <form onSubmit={handleAddParty} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-wider mb-1">Party / Customer Name</label>
-                <input 
-                  type="text" 
-                  required 
-                  value={partyName} 
-                  onChange={(e) => setPartyName(e.target.value)}
-                  placeholder="e.g. Ramesh Kumar"
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-wider mb-1">Phone Number</label>
-                <input 
-                  type="text" 
-                  value={partyPhone} 
-                  onChange={(e) => setPartyPhone(e.target.value)}
-                  placeholder="e.g. 9811234567"
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                <button 
-                  type="button" 
-                  onClick={() => setShowAddPartyModal(false)}
-                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-5 py-2 text-white bg-sky-600 hover:bg-sky-700 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
-                >
-                  Save Party
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Add Transaction Modal */}
       {showModal && (
