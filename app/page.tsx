@@ -20,22 +20,30 @@ import {
   Trash2
 } from 'lucide-react';
 
+// Dynamic API Base URL (Render in Production, Localhost in Local)
+const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost')) {
+    return 'https://cashbook-app-xi.vercel.app'; // Fallback / Production backend endpoint
+  }
+  return 'http://localhost:5000';
+};
+
 export default function CashLedgerDashboard() {
   const [user] = useState({ phone: '9258089101', business_name: 'My Store' });
 
-  // Dashboard State
+  // App State
   const [activeTab, setActiveTab] = useState('daybook');
   const [transactions, setTransactions] = useState<any[]>([]);
   const [summary, setSummary] = useState({ totalCashIn: 0, totalCashOut: 0, netBalance: 0 });
   const [showModal, setShowModal] = useState(false);
   const [showAddPartyModal, setShowAddPartyModal] = useState(false);
 
-  // Party State
+  // Party Management State
   const [parties, setParties] = useState<any[]>([]);
   const [selectedParty, setSelectedParty] = useState<any>(null);
   const [partyLedger, setPartyLedger] = useState<any[]>([]);
 
-  // Form Controls
+  // Form Fields
   const [partyName, setPartyName] = useState('');
   const [partyPhone, setPartyPhone] = useState('');
   const [txnType, setTxnType] = useState('CASH_IN');
@@ -44,13 +52,15 @@ export default function CashLedgerDashboard() {
   const [remarks, setRemarks] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Business Profile State
+  // Store Profile State
   const [businessName, setBusinessName] = useState('My Store');
   const [phone, setPhone] = useState('9258089101');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [gstin, setGstin] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const API_URL = getApiBaseUrl();
 
   useEffect(() => {
     fetchDaybook();
@@ -60,7 +70,7 @@ export default function CashLedgerDashboard() {
 
   const fetchProfile = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/users/profile');
+      const res = await axios.get(`${API_URL}/api/users/profile`);
       if (res.data) {
         setBusinessName(res.data.business_name || 'My Store');
         setPhone(res.data.phone || '9258089101');
@@ -75,7 +85,7 @@ export default function CashLedgerDashboard() {
 
   const fetchDaybook = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/transactions/daybook');
+      const res = await axios.get(`${API_URL}/api/transactions/daybook`);
       setTransactions(res.data.transactions || []);
       setSummary(res.data.summary || { totalCashIn: 0, totalCashOut: 0, netBalance: 0 });
     } catch (err) {
@@ -85,7 +95,7 @@ export default function CashLedgerDashboard() {
 
   const fetchParties = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/parties/list');
+      const res = await axios.get(`${API_URL}/api/parties/list`);
       setParties(res.data || []);
       if (res.data && res.data.length > 0 && !selectedParty) {
         fetchPartyLedger(res.data[0].id);
@@ -97,7 +107,7 @@ export default function CashLedgerDashboard() {
 
   const fetchPartyLedger = async (partyId: number) => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/parties/ledger/${partyId}`);
+      const res = await axios.get(`${API_URL}/api/parties/ledger/${partyId}`);
       setSelectedParty(res.data.party);
       setPartyLedger(res.data.transactions || []);
     } catch (err) {
@@ -108,7 +118,7 @@ export default function CashLedgerDashboard() {
   const handleAddParty = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/parties/add', {
+      await axios.post(`${API_URL}/api/parties/add`, {
         name: partyName,
         phone: partyPhone
       });
@@ -124,7 +134,7 @@ export default function CashLedgerDashboard() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.put('http://localhost:5000/api/users/profile', {
+      await axios.put(`${API_URL}/api/users/profile`, {
         business_name: businessName,
         phone,
         email,
@@ -141,7 +151,7 @@ export default function CashLedgerDashboard() {
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/transactions/add', {
+      await axios.post(`${API_URL}/api/transactions/add`, {
         party_id: activeTab === 'parties' && selectedParty ? selectedParty.id : null,
         txn_type: txnType,
         amount: parseFloat(amount),
@@ -156,20 +166,20 @@ export default function CashLedgerDashboard() {
       if (selectedParty) fetchPartyLedger(selectedParty.id);
       fetchParties();
     } catch (err) {
-      alert('Failed to save entry.');
+      alert('Failed to save transaction entry.');
     }
   };
 
   const handlePurgeData = async () => {
     if (confirm('Are you sure you want to delete all transaction records?')) {
       try {
-        await axios.delete('http://localhost:5000/api/users/purge-data');
+        await axios.delete(`${API_URL}/api/users/purge-data`);
         alert('All records deleted successfully.');
         fetchDaybook();
         fetchParties();
         setSelectedParty(null);
       } catch (err) {
-        alert('Error deleting records.');
+        alert('Error purging data.');
       }
     }
   };
@@ -181,7 +191,7 @@ export default function CashLedgerDashboard() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
-      {/* Hide Next.js N Logo Badge */}
+      {/* Hide Next.js Dev Badge */}
       <style jsx global>{`
         [data-nextjs-toast], [data-nextjs-dialog-overlay], #nextjs-dev-indicator {
           display: none !important;
@@ -248,7 +258,7 @@ export default function CashLedgerDashboard() {
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* Main Workspace */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="bg-white border-b border-slate-200/80 px-8 py-5 flex justify-between items-center shadow-sm">
           <div>
@@ -534,7 +544,7 @@ export default function CashLedgerDashboard() {
                   <p className="text-xs text-slate-500 mt-1 mb-5">Printable A4 PDF statement with complete transaction breakdown.</p>
                   
                   <button 
-                    onClick={() => window.open('http://localhost:5000/api/reports/pdf', '_blank')}
+                    onClick={() => window.open(`${API_URL}/api/reports/pdf`, '_blank')}
                     className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md transition-all"
                   >
                     <Download size={15} /> Download PDF
@@ -547,7 +557,7 @@ export default function CashLedgerDashboard() {
                   <p className="text-xs text-slate-500 mt-1 mb-5">Spreadsheet format for MS Excel and accounting software.</p>
                   
                   <button 
-                    onClick={() => window.open('http://localhost:5000/api/reports/excel', '_blank')}
+                    onClick={() => window.open(`${API_URL}/api/reports/excel`, '_blank')}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md transition-all"
                   >
                     <Download size={15} /> Download Excel File
