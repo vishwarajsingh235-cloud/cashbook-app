@@ -1,99 +1,60 @@
 import { NextResponse } from 'next/server';
-import PDFDocument from 'pdfkit';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  return new Promise<NextResponse>((resolve) => {
-    try {
-      const doc = new PDFDocument({ size: 'A4', margin: 25 });
-      const chunks: Buffer[] = [];
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="utf-8">
+    <title>CashLedger Statement</title>
+    <style>
+      @page { size: A4; margin: 15mm; }
+      body { font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 15px; border: 2px solid #0f172a; }
+      .header { display: flex; justify-content: space-between; border-bottom: 2px solid #0f172a; padding-bottom: 10px; }
+      .logo { width: 42px; height: 42px; background: #0f172a; color: #38bdf8; font-size: 18pt; font-weight: 900; text-align: center; line-height: 42px; border-radius: 8px; display: inline-block; }
+      .title { font-size: 14pt; font-weight: 800; margin: 0; }
+      .doc-title { font-size: 14pt; font-weight: 900; color: #0284c7; margin: 0; }
+      .cards { display: flex; gap: 10px; margin: 15px 0; }
+      .card { flex: 1; padding: 10px; text-align: center; border-radius: 6px; border: 1px solid #cbd5e1; }
+      table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+      th { background: #0f172a; color: #fff; padding: 8px; font-size: 8pt; text-align: left; }
+      td { padding: 8px; border: 1px solid #cbd5e1; font-size: 8.5pt; }
+    </style>
+    </head>
+    <body onload="window.print()">
+      <div class="header">
+        <div>
+          <div class="logo">CL</div>
+          <div style="display:inline-block; margin-left:10px; vertical-align:top;">
+            <div class="title">VERMA GENERAL STORE</div>
+            <div style="font-size:8.5pt; color:#64748b;">Phone: +91 9258089101</div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div class="doc-title">ACCOUNT STATEMENT</div>
+          <div style="font-size:8.5pt; color:#64748b;">Date: ${new Date().toLocaleDateString('en-IN')}</div>
+        </div>
+      </div>
+      <div class="cards">
+        <div class="card" style="background:#f0fdf4; color:#16a34a;"><b>TOTAL CREDIT</b><br>Rs. 52,000.00</div>
+        <div class="card" style="background:#fef2f2; color:#dc2626;"><b>TOTAL DEBIT</b><br>Rs. 5,200.00</div>
+        <div class="card" style="background:#f0f9ff; color:#0284c7;"><b>NET BALANCE</b><br>Rs. 46,800.00 Cr</div>
+      </div>
+      <table>
+        <thead>
+          <tr><th>DATE</th><th>REMARKS</th><th>MODE</th><th style="text-align:right;">DEBIT (RS.)</th><th style="text-align:right;">CREDIT (RS.)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>${new Date().toLocaleDateString('en-IN')}</td><td>Opening Ledger Entry</td><td>UPI</td><td style="text-align:right;">-</td><td style="text-align:right; color:#16a34a; font-weight:bold;">52,000.00</td></tr>
+        </tbody>
+      </table>
+    </body>
+    </html>
+  `;
 
-      doc.on('data', (chunk) => chunks.push(chunk));
-      doc.on('end', () => {
-        const pdfBuffer = Buffer.concat(chunks);
-        resolve(
-          new NextResponse(pdfBuffer, {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/pdf',
-              'Content-Disposition': 'attachment; filename="CashLedger_Statement.pdf"',
-            },
-          })
-        );
-      });
-
-      // 1. Full Page Outer Frame Border
-      doc.rect(15, 15, 565, 812).lineWidth(1.5).strokeColor('#0f172a').stroke();
-
-      // 2. Logo Badge ("CL")
-      doc.roundedRect(30, 30, 44, 44, 8).fill('#0f172a');
-      doc.fillColor('#38bdf8').fontSize(20).font('Helvetica-Bold').text('CL', 39, 42);
-
-      // 3. Company Details
-      doc.fillColor('#0f172a').fontSize(15).font('Helvetica-Bold').text('VERMA GENERAL STORE', 85, 33);
-      doc.fillColor('#64748b').fontSize(8.5).font('Helvetica').text('Phone: +91 9258089101 | Main Market, Sector 62', 85, 52);
-
-      // 4. Header Title
-      doc.fillColor('#0284c7').fontSize(14).font('Helvetica-Bold').text('ACCOUNT STATEMENT', 360, 33, { align: 'right' });
-      doc.fillColor('#64748b').fontSize(8.5).font('Helvetica').text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 360, 50, { align: 'right' });
-
-      // Divider Line
-      doc.moveTo(30, 80).lineTo(565, 80).lineWidth(1).strokeColor('#cbd5e1').stroke();
-
-      // 5. Summary Metric Cards
-      let y = 95;
-      doc.roundedRect(30, y, 170, 45, 5).fillAndStroke('#f0fdf4', '#bbf7d0');
-      doc.fillColor('#15803d').fontSize(7.5).font('Helvetica-Bold').text('TOTAL CREDIT', 40, y + 7);
-      doc.fillColor('#16a34a').fontSize(11.5).text('Rs. 52,000.00', 40, y + 22);
-
-      doc.roundedRect(212, y, 170, 45, 5).fillAndStroke('#fef2f2', '#fecaca');
-      doc.fillColor('#b91c1c').fontSize(7.5).font('Helvetica-Bold').text('TOTAL DEBIT', 222, y + 7);
-      doc.fillColor('#dc2626').fontSize(11.5).text('Rs. 5,200.00', 222, y + 22);
-
-      doc.roundedRect(395, y, 170, 45, 5).fillAndStroke('#f0f9ff', '#bae6fd');
-      doc.fillColor('#0369a1').fontSize(7.5).font('Helvetica-Bold').text('NET BALANCE DUE', 405, y + 7);
-      doc.fillColor('#0284c7').fontSize(11.5).text('Rs. 46,800.00 Cr', 405, y + 22);
-
-      // 6. Data Table Header
-      y = 152;
-      doc.rect(30, y, 535, 20).fill('#0f172a');
-      doc.fillColor('#ffffff').fontSize(8).font('Helvetica-Bold');
-      doc.text('DATE', 38, y + 5);
-      doc.text('PARTICULARS / REMARKS', 115, y + 5);
-      doc.text('MODE', 310, y + 5);
-      doc.text('DEBIT (RS.)', 380, y + 5, { width: 85, align: 'right' });
-      doc.text('CREDIT (RS.)', 470, y + 5, { width: 85, align: 'right' });
-
-      // Table Content Rows
-      y += 20;
-      doc.font('Helvetica').fontSize(8.5);
-
-      // Row 1
-      doc.rect(30, y, 535, 20).fillAndStroke('#ffffff', '#cbd5e1');
-      doc.fillColor('#334155').text(new Date().toLocaleDateString('en-IN'), 38, y + 5);
-      doc.fillColor('#0f172a').font('Helvetica-Bold').text('Ganna payment received', 115, y + 5);
-      doc.font('Helvetica').fillColor('#334155').text('UPI', 310, y + 5);
-      doc.fillColor('#94a3b8').text('-', 380, y + 5, { width: 85, align: 'right' });
-      doc.fillColor('#16a34a').font('Helvetica-Bold').text('50,000.00', 470, y + 5, { width: 85, align: 'right' });
-
-      // Row 2
-      y += 20;
-      doc.rect(30, y, 535, 20).fillAndStroke('#f8fafc', '#cbd5e1');
-      doc.fillColor('#334155').text(new Date().toLocaleDateString('en-IN'), 38, y + 5);
-      doc.fillColor('#0f172a').font('Helvetica-Bold').text('Opening Ledger Entry', 115, y + 5);
-      doc.font('Helvetica').fillColor('#334155').text('CASH', 310, y + 5);
-      doc.fillColor('#94a3b8').text('-', 380, y + 5, { width: 85, align: 'right' });
-      doc.fillColor('#16a34a').font('Helvetica-Bold').text('2,000.00', 470, y + 5, { width: 85, align: 'right' });
-
-      // Footer
-      doc.fontSize(8).fillColor('#64748b').font('Helvetica').text('* Computer Generated Statement. Powered by CashLedger Engine', 30, 795);
-      doc.moveTo(425, 790).lineTo(565, 790).lineWidth(0.8).strokeColor('#0f172a').stroke();
-      doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(8.5).text('Authorized Signatory', 425, 794, { width: 140, align: 'center' });
-
-      doc.end();
-    } catch (error: any) {
-      resolve(NextResponse.json({ error: error.message }, { status: 500 }));
-    }
+  return new NextResponse(html, {
+    headers: { 'Content-Type': 'text/html' },
   });
 }
