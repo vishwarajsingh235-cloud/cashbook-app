@@ -117,7 +117,7 @@ export default function CashLedgerDashboard() {
       setPartyPhone('');
       fetchParties();
     } catch (err) {
-      alert('Error saving party detail.');
+      alert('Error saving party details.');
     }
   };
 
@@ -156,20 +156,20 @@ export default function CashLedgerDashboard() {
       if (selectedParty) fetchPartyLedger(selectedParty.id);
       fetchParties();
     } catch (err) {
-      alert('Entry save nahi ho payi.');
+      alert('Failed to save entry.');
     }
   };
 
   const handlePurgeData = async () => {
-    if (confirm('Kya aap saara data delete karna chahte hain? Ye wapas nahi aayega.')) {
+    if (confirm('Are you sure you want to delete all transaction records?')) {
       try {
         await axios.delete('http://localhost:5000/api/users/purge-data');
-        alert('Saara record clear ho gaya.');
+        alert('All records deleted successfully.');
         fetchDaybook();
         fetchParties();
         setSelectedParty(null);
       } catch (err) {
-        alert('Data clear karne me error aaya.');
+        alert('Error deleting records.');
       }
     }
   };
@@ -198,7 +198,7 @@ export default function CashLedgerDashboard() {
               </div>
               <div>
                 <h1 className="text-lg font-black tracking-tight text-white uppercase">CashLedger</h1>
-                <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Daily Vyapar Khata</p>
+                <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Business Cashbook</p>
               </div>
             </div>
           </div>
@@ -219,7 +219,7 @@ export default function CashLedgerDashboard() {
                 activeTab === 'parties' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
-              <Users size={16} /> Customer / Parties
+              <Users size={16} /> Customers & Parties
             </button>
 
             <button 
@@ -228,7 +228,7 @@ export default function CashLedgerDashboard() {
                 activeTab === 'reports' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
-              <FileSpreadsheet size={16} /> Bill & PDF Exports
+              <FileSpreadsheet size={16} /> Reports & Exports
             </button>
 
             <button 
@@ -244,21 +244,21 @@ export default function CashLedgerDashboard() {
 
         <div className="p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800">
           <div className="text-xs font-extrabold text-white mb-0.5 truncate">+91 {user?.phone}</div>
-          <div className="text-[10px] text-emerald-400 font-bold uppercase">Khata Active</div>
+          <div className="text-[10px] text-emerald-400 font-bold uppercase">Active Account</div>
         </div>
       </aside>
 
-      {/* Main Workspace */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="bg-white border-b border-slate-200/80 px-8 py-5 flex justify-between items-center shadow-sm">
           <div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">
               {activeTab === 'daybook' && 'Cash In & Out Entries'}
-              {activeTab === 'parties' && 'Party Statements'}
-              {activeTab === 'reports' && 'Download Reports'}
-              {activeTab === 'settings' && 'Store Details'}
+              {activeTab === 'parties' && 'Party Ledger Statements'}
+              {activeTab === 'reports' && 'Reports & Statements'}
+              {activeTab === 'settings' && 'Store Settings'}
             </h2>
-            <p className="text-xs font-semibold text-slate-500 mt-0.5">Apne vyapar ka hisab-kitaab maintain karein</p>
+            <p className="text-xs font-semibold text-slate-500 mt-0.5">Manage daily cash flow and accounts</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -266,13 +266,13 @@ export default function CashLedgerDashboard() {
               onClick={() => { setTxnType('CASH_IN'); setShowModal(true); }}
               className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md cursor-pointer transition-all"
             >
-              <Plus size={16} /> Cash In (+ Aaya)
+              <Plus size={16} /> Cash In
             </button>
             <button 
               onClick={() => { setTxnType('CASH_OUT'); setShowModal(true); }}
               className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md cursor-pointer transition-all"
             >
-              <Minus size={16} /> Cash Out (- Gaya)
+              <Minus size={16} /> Cash Out
             </button>
           </div>
         </header>
@@ -283,7 +283,7 @@ export default function CashLedgerDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Credit (Jama)</p>
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Credit (Cash In)</p>
                     <h3 className="text-3xl font-black text-emerald-600 mt-1">
                       Rs. {summary.totalCashIn.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
@@ -295,7 +295,7 @@ export default function CashLedgerDashboard() {
 
                 <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Debit (Kharach)</p>
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Debit (Cash Out)</p>
                     <h3 className="text-3xl font-black text-rose-600 mt-1">
                       Rs. {summary.totalCashOut.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
@@ -307,7 +307,7 @@ export default function CashLedgerDashboard() {
 
                 <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Net Cash Balance</p>
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Net Balance</p>
                     <h3 className={`text-3xl font-black mt-1 ${summary.netBalance >= 0 ? 'text-sky-600' : 'text-rose-600'}`}>
                       Rs. {summary.netBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
@@ -387,14 +387,14 @@ export default function CashLedgerDashboard() {
             <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
               <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">Customer & Supplier Directory</h3>
-                  <p className="text-xs text-slate-500 font-semibold">Party-wise len-den ka record dekhein</p>
+                  <h3 className="text-lg font-bold text-slate-900">Party Accounts</h3>
+                  <p className="text-xs text-slate-500 font-semibold">Track customer and vendor ledger balances</p>
                 </div>
                 <button 
                   onClick={() => setShowAddPartyModal(true)}
                   className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center gap-2"
                 >
-                  <UserPlus size={16} /> Add New Party
+                  <UserPlus size={16} /> Add Party Account
                 </button>
               </div>
 
@@ -407,7 +407,7 @@ export default function CashLedgerDashboard() {
                     onClick={() => setShowAddPartyModal(true)}
                     className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer"
                   >
-                    + Add First Party
+                    + Add Party
                   </button>
                 </div>
               ) : (
@@ -436,7 +436,7 @@ export default function CashLedgerDashboard() {
                                 Rs. {Math.abs(partyNetBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                               </span>
                               <div className="text-[9px] font-extrabold uppercase text-slate-400">
-                                {partyNetBalance >= 0 ? 'RECEIVABLE (LENE HAIN)' : 'PAYABLE (DENE HAIN)'}
+                                {partyNetBalance >= 0 ? 'RECEIVABLE (DR)' : 'PAYABLE (CR)'}
                               </div>
                             </div>
                           </div>
@@ -448,7 +448,7 @@ export default function CashLedgerDashboard() {
                   <div className="md:col-span-2 flex flex-col justify-between">
                     {!selectedParty ? (
                       <div className="text-center py-20 text-slate-400 text-xs font-semibold">
-                        Select a party from the left menu to view ledger details.
+                        Select a party from the left panel to view transactions.
                       </div>
                     ) : (
                       <div>
@@ -463,13 +463,13 @@ export default function CashLedgerDashboard() {
                               onClick={() => { setTxnType('CASH_OUT'); setShowModal(true); }}
                               className="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm cursor-pointer"
                             >
-                              <Minus size={14} /> Debit (Diye)
+                              <Minus size={14} /> Debit (Paid)
                             </button>
                             <button 
                               onClick={() => { setTxnType('CASH_IN'); setShowModal(true); }}
                               className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm cursor-pointer"
                             >
-                              <Plus size={14} /> Credit (Miley)
+                              <Plus size={14} /> Credit (Received)
                             </button>
                           </div>
                         </div>
@@ -488,7 +488,7 @@ export default function CashLedgerDashboard() {
                             {partyLedger.length === 0 ? (
                               <tr>
                                 <td colSpan={5} className="text-center py-10 text-slate-400 font-medium text-xs">
-                                  No records found for this party.
+                                  No transaction records found for this party.
                                 </td>
                               </tr>
                             ) : (
@@ -525,13 +525,13 @@ export default function CashLedgerDashboard() {
           {activeTab === 'reports' && (
             <div className="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-1">Download Account Statements</h3>
-              <p className="text-xs text-slate-500 mb-6">Printable PDF statements and Excel files download karein</p>
+              <p className="text-xs text-slate-500 mb-6">Download printable PDF statements and Excel files</p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="p-6 border border-slate-200/80 rounded-2xl hover:border-sky-500 transition-all bg-slate-50/30">
                   <FileText size={32} className="text-sky-600 mb-3" />
                   <h4 className="font-bold text-slate-900 text-base">PDF Account Statement</h4>
-                  <p className="text-xs text-slate-500 mt-1 mb-5">Print-ready A4 PDF format with complete transaction breakdown.</p>
+                  <p className="text-xs text-slate-500 mt-1 mb-5">Printable A4 PDF statement with complete transaction breakdown.</p>
                   
                   <button 
                     onClick={() => window.open('http://localhost:5000/api/reports/pdf', '_blank')}
@@ -543,8 +543,8 @@ export default function CashLedgerDashboard() {
 
                 <div className="p-6 border border-slate-200/80 rounded-2xl hover:border-emerald-500 transition-all bg-slate-50/30">
                   <FileSpreadsheet size={32} className="text-emerald-600 mb-3" />
-                  <h4 className="font-bold text-slate-900 text-base">Excel Sheet (.XLSX)</h4>
-                  <p className="text-xs text-slate-500 mt-1 mb-5">Raw transaction spreadsheet for MS Excel and accounting work.</p>
+                  <h4 className="font-bold text-slate-900 text-base">Excel Worksheet (.XLSX)</h4>
+                  <p className="text-xs text-slate-500 mt-1 mb-5">Spreadsheet format for MS Excel and accounting software.</p>
                   
                   <button 
                     onClick={() => window.open('http://localhost:5000/api/reports/excel', '_blank')}
@@ -560,7 +560,7 @@ export default function CashLedgerDashboard() {
           {activeTab === 'settings' && (
             <div className="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm max-w-2xl">
               <h3 className="text-lg font-bold text-slate-900 mb-1">Store Details</h3>
-              <p className="text-xs text-slate-500 mb-6">Manage shop name, phone number, and address printed on PDF bills.</p>
+              <p className="text-xs text-slate-500 mb-6">Manage shop name, phone number, and address printed on PDF statements.</p>
 
               {saveSuccess && (
                 <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-bold text-xs flex items-center gap-2">
@@ -641,7 +641,7 @@ export default function CashLedgerDashboard() {
                     onClick={handlePurgeData}
                     className="text-rose-600 hover:bg-rose-50 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Trash2 size={14} /> Clear All Data
+                    <Trash2 size={14} /> Delete All Records
                   </button>
                 </div>
               </form>
@@ -737,12 +737,12 @@ export default function CashLedgerDashboard() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-wider mb-1">Details / Bill Note</label>
+                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-wider mb-1">Details / Remarks</label>
                 <input 
                   type="text" 
                   value={remarks} 
                   onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="e.g. Saman Khareeda (Bill #804)"
+                  placeholder="e.g. Purchased Supplies (Invoice #804)"
                   className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-sm"
                 />
               </div>
