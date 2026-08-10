@@ -15,7 +15,8 @@ import {
   FileText,
   CheckCircle2,
   UserPlus,
-  Trash2
+  Trash2,
+  UserCheck
 } from 'lucide-react';
 
 export default function CashLedgerDashboard() {
@@ -36,13 +37,13 @@ export default function CashLedgerDashboard() {
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [remarks, setRemarks] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [partySearchTerm, setPartySearchTerm] = useState('');
 
   // Profile Fields
   const [businessName, setBusinessName] = useState('My Business');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
-  const [gstin, setGstin] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Load Saved Data
@@ -52,7 +53,13 @@ export default function CashLedgerDashboard() {
       if (savedTxns) setTransactions(JSON.parse(savedTxns));
 
       const savedParties = localStorage.getItem('cl_parties');
-      if (savedParties) setParties(JSON.parse(savedParties));
+      if (savedParties) {
+        const parsedParties = JSON.parse(savedParties);
+        setParties(parsedParties);
+        if (parsedParties.length > 0 && !selectedParty) {
+          setSelectedParty(parsedParties[0]);
+        }
+      }
 
       const savedProfile = localStorage.getItem('cl_profile');
       if (savedProfile) {
@@ -61,7 +68,6 @@ export default function CashLedgerDashboard() {
         setPhone(p.phone || '');
         setEmail(p.email || '');
         setAddress(p.address || '');
-        setGstin(p.gstin || '');
       }
     } catch (e) {
       console.error(e);
@@ -79,7 +85,22 @@ export default function CashLedgerDashboard() {
 
   const netBalance = totalCashIn - totalCashOut;
 
-  // Add Transaction
+  // Selected Party Summary
+  const partyTransactions = selectedParty 
+    ? transactions.filter(t => t.party_id === selectedParty.id)
+    : [];
+
+  const partyCashIn = partyTransactions
+    .filter(t => t.txn_type === 'CASH_IN')
+    .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
+
+  const partyCashOut = partyTransactions
+    .filter(t => t.txn_type === 'CASH_OUT')
+    .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
+
+  const partyBalance = partyCashIn - partyCashOut;
+
+  // Add Transaction Entry
   const handleAddTransaction = (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || parseFloat(amount) <= 0) return;
@@ -91,7 +112,7 @@ export default function CashLedgerDashboard() {
         txn_type: txnType,
         amount: parseFloat(amount),
         payment_mode: paymentMode,
-        remarks: remarks || 'Cash Transaction',
+        remarks: remarks || (activeTab === 'parties' && selectedParty ? `${txnType === 'CASH_IN' ? 'Payment from' : 'Payment to'} ${selectedParty.name}` : 'Cash Transaction'),
         txn_date: new Date().toISOString()
       };
 
@@ -107,7 +128,7 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // Add Party Account
+  // Add Party
   const handleAddParty = (e: React.FormEvent) => {
     e.preventDefault();
     if (!partyName) return;
@@ -132,16 +153,16 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // Save Profile Details
+  // Save Profile
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    const profile = { businessName, phone, email, address, gstin };
+    const profile = { businessName, phone, email, address };
     localStorage.setItem('cl_profile', JSON.stringify(profile));
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
-  // Clear All Data
+  // Clear Entries
   const handlePurgeData = () => {
     if (confirm('Are you sure you want to clear all transaction records?')) {
       localStorage.removeItem('cl_transactions');
@@ -152,7 +173,7 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // PDF Report Generator with Logo on Bottom Right Corner
+  // PDF Download
   const downloadPDF = async () => {
     const { default: jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
@@ -167,12 +188,10 @@ export default function CashLedgerDashboard() {
       .substring(0, 2)
       .toUpperCase() || 'CB';
 
-    // Outer Frame Border
     doc.setDrawColor(15, 23, 42);
     doc.setLineWidth(0.8);
     doc.rect(8, 8, 194, 281);
 
-    // Top Header Logo Badge
     doc.setFillColor(24, 24, 27);
     doc.roundedRect(14, 14, 16, 16, 3, 3, 'F');
     doc.setTextColor(244, 244, 245);
@@ -180,7 +199,6 @@ export default function CashLedgerDashboard() {
     doc.setFont('helvetica', 'bold');
     doc.text(badgeText, 17, 24);
 
-    // Store Header Details
     doc.setTextColor(15, 23, 42);
     doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
@@ -196,7 +214,6 @@ export default function CashLedgerDashboard() {
     doc.setFont('helvetica', 'normal');
     doc.text(contactLine || 'Statement Summary', 34, 26);
 
-    // Document Title
     doc.setTextColor(2, 132, 199);
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
@@ -207,12 +224,10 @@ export default function CashLedgerDashboard() {
     doc.setFont('helvetica', 'normal');
     doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 196, 26, { align: 'right' });
 
-    // Divider
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.5);
     doc.line(14, 34, 196, 34);
 
-    // Metric Summary Cards
     doc.setFillColor(240, 253, 244);
     doc.setDrawColor(187, 247, 208);
     doc.roundedRect(14, 38, 56, 18, 2, 2, 'FD');
@@ -246,56 +261,40 @@ export default function CashLedgerDashboard() {
     doc.setFontSize(10);
     doc.text(`Rs. ${Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })} ${netBalance >= 0 ? 'Cr' : 'Dr'}`, 138, 51);
 
-    // Data Table
-    const tableData = transactions.map((t) => [
-      new Date(t.txn_date).toLocaleDateString('en-IN'),
-      t.remarks || 'Cash Transaction',
-      t.payment_mode || 'Cash',
-      t.txn_type === 'CASH_OUT' ? parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-',
-      t.txn_type === 'CASH_IN' ? parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-'
-    ]);
+    const tableData = transactions.map((t) => {
+      const p = parties.find(party => party.id === t.party_id);
+      return [
+        new Date(t.txn_date).toLocaleDateString('en-IN'),
+        p ? `${p.name} - ${t.remarks}` : (t.remarks || 'Cash Transaction'),
+        t.payment_mode || 'Cash',
+        t.txn_type === 'CASH_OUT' ? parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-',
+        t.txn_type === 'CASH_IN' ? parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-'
+      ];
+    });
 
     autoTable(doc, {
       startY: 61,
       head: [['DATE', 'PARTICULARS / REMARKS', 'MODE', 'DEBIT (RS.)', 'CREDIT (RS.)']],
       body: tableData.length > 0 ? tableData : [['-', 'No transactions recorded', '-', '-', '-']],
       theme: 'grid',
-      headStyles: {
-        fillColor: [15, 23, 42],
-        textColor: [255, 255, 255],
-        fontSize: 8,
-        fontStyle: 'bold'
-      },
-      bodyStyles: {
-        fontSize: 8,
-        textColor: [51, 65, 85]
-      },
-      columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 80 },
-        2: { cellWidth: 22 },
-        3: { cellWidth: 27, halign: 'right' },
-        4: { cellWidth: 28, halign: 'right' }
-      },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 8, textColor: [51, 65, 85] },
+      columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 80 }, 2: { cellWidth: 22 }, 3: { cellWidth: 27, halign: 'right' }, 4: { cellWidth: 28, halign: 'right' } },
       margin: { left: 14, right: 14 }
     });
 
-    // Footer with CashLedger Logo on Bottom Right Corner
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
-      
       doc.setTextColor(100, 116, 139);
       doc.setFontSize(7);
       doc.text('* Computer Generated Statement', 14, 282);
 
-      // Bottom Right Branding: "CashLedger" text + Neon Icon Badge
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'bold');
       doc.text('CashLedger', 174, 281, { align: 'right' });
 
-      // Neon Logo Badge Box
       doc.setFillColor(24, 24, 27);
       doc.roundedRect(177, 276, 7, 7, 1.5, 1.5, 'F');
       
@@ -304,7 +303,6 @@ export default function CashLedgerDashboard() {
       doc.setFont('helvetica', 'bold');
       doc.text('CL', 178.2, 281);
 
-      // Neon Green Indicator Dot
       doc.setFillColor(34, 197, 94);
       doc.circle(182.5, 277.5, 0.6, 'F');
     }
@@ -317,6 +315,11 @@ export default function CashLedgerDashboard() {
     (t.payment_mode && t.payment_mode.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const filteredParties = parties.filter(p => 
+    p.name.toLowerCase().includes(partySearchTerm.toLowerCase()) ||
+    (p.phone && p.phone.includes(partySearchTerm))
+  );
+
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
       <style jsx global>{`
@@ -324,11 +327,10 @@ export default function CashLedgerDashboard() {
       `}</style>
 
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-950 text-white flex flex-col justify-between hidden md:flex border-r border-slate-800">
+      <aside className="w-64 bg-slate-950 text-white flex flex-col justify-between hidden md:flex border-r border-slate-800 shrink-0">
         <div>
           <div className="p-6 border-b border-slate-800/80">
             <div className="flex items-center gap-3">
-              {/* Neon CL App Icon */}
               <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="shadow-md shrink-0">
                 <rect width="100" height="100" rx="26" fill="#18181B"/>
                 <rect x="10" y="10" width="80" height="80" rx="20" stroke="#27272A" strokeWidth="2"/>
@@ -492,29 +494,39 @@ export default function CashLedgerDashboard() {
                     {filteredTransactions.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="text-center py-12 text-slate-400 font-medium">
-                          No transactions recorded yet. Click <span className="text-emerald-600 font-bold">+ Cash In</span> or <span className="text-rose-600 font-bold">- Cash Out</span> to add one.
+                          No transactions recorded yet.
                         </td>
                       </tr>
                     ) : (
-                      filteredTransactions.map((t) => (
-                        <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="p-4 text-slate-500 text-xs font-mono font-semibold">
-                            {new Date(t.txn_date).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
-                          </td>
-                          <td className="p-4 font-bold text-slate-900">{t.remarks || 'Cash Transaction'}</td>
-                          <td className="p-4">
-                            <span className="px-2.5 py-1 bg-slate-100 border border-slate-200/80 text-slate-700 rounded-md text-[10px] font-black uppercase tracking-wider">
-                              {t.payment_mode}
-                            </span>
-                          </td>
-                          <td className="p-4 text-right font-bold text-emerald-600">
-                            {t.txn_type === 'CASH_IN' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
-                          </td>
-                          <td className="p-4 text-right font-bold text-rose-600">
-                            {t.txn_type === 'CASH_OUT' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
-                          </td>
-                        </tr>
-                      ))
+                      filteredTransactions.map((t) => {
+                        const p = parties.find(party => party.id === t.party_id);
+                        return (
+                          <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="p-4 text-slate-500 text-xs font-mono font-semibold">
+                              {new Date(t.txn_date).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                            </td>
+                            <td className="p-4 font-bold text-slate-900">
+                              {p ? (
+                                <span className="inline-flex items-center gap-1.5">
+                                  <span className="text-sky-600 bg-sky-50 px-2 py-0.5 rounded text-xs">{p.name}</span>
+                                  <span>{t.remarks}</span>
+                                </span>
+                              ) : (t.remarks || 'Cash Transaction')}
+                            </td>
+                            <td className="p-4">
+                              <span className="px-2.5 py-1 bg-slate-100 border border-slate-200/80 text-slate-700 rounded-md text-[10px] font-black uppercase tracking-wider">
+                                {t.payment_mode}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right font-bold text-emerald-600">
+                              {t.txn_type === 'CASH_IN' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+                            </td>
+                            <td className="p-4 text-right font-bold text-rose-600">
+                              {t.txn_type === 'CASH_OUT' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -549,29 +561,153 @@ export default function CashLedgerDashboard() {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 border-r border-slate-100">
-                    {parties.map((p) => (
-                      <div 
-                        key={p.id}
-                        onClick={() => setSelectedParty(p)}
-                        className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
-                          selectedParty && selectedParty.id === p.id 
-                            ? 'border-sky-500 bg-sky-50/50 shadow-sm' 
-                            : 'border-slate-200/80 hover:bg-slate-50'
-                        }`}
-                      >
-                        <h4 className="font-bold text-slate-900 text-sm">{p.name}</h4>
-                        <p className="text-[11px] text-slate-500 font-medium">{p.phone ? `Phone: ${p.phone}` : 'No phone specified'}</p>
-                      </div>
-                    ))}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Left Column: Search & Party List (4 Columns) */}
+                  <div className="lg:col-span-4 space-y-3 border-r border-slate-100 pr-3">
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+                      <input 
+                        type="text" 
+                        placeholder="Search party name or phone..." 
+                        value={partySearchTerm}
+                        onChange={(e) => setPartySearchTerm(e.target.value)}
+                        className="pl-8 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium w-full shadow-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                      {filteredParties.length === 0 ? (
+                        <p className="text-xs text-slate-400 text-center py-4">No party found matching query.</p>
+                      ) : (
+                        filteredParties.map((p) => {
+                          const pTxns = transactions.filter(t => t.party_id === p.id);
+                          const pIn = pTxns.filter(t => t.txn_type === 'CASH_IN').reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
+                          const pOut = pTxns.filter(t => t.txn_type === 'CASH_OUT').reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
+                          const pBal = pIn - pOut;
+
+                          return (
+                            <div 
+                              key={p.id}
+                              onClick={() => setSelectedParty(p)}
+                              className={`p-3.5 rounded-xl border transition-all cursor-pointer flex justify-between items-center ${
+                                selectedParty && selectedParty.id === p.id 
+                                  ? 'border-sky-500 bg-sky-50/50 shadow-sm' 
+                                  : 'border-slate-200/80 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="min-w-0 pr-2">
+                                <h4 className="font-bold text-slate-900 text-sm truncate">{p.name}</h4>
+                                <p className="text-[11px] text-slate-500 font-medium truncate">{p.phone ? `Phone: ${p.phone}` : 'No phone'}</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className={`text-xs font-black ${pBal >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                  Rs. {Math.abs(pBal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </div>
+                                <div className="text-[9px] font-bold text-slate-400 uppercase">
+                                  {pBal >= 0 ? 'You Get' : 'You Give'}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
 
-                  <div className="md:col-span-2">
-                    {selectedParty && (
-                      <div>
-                        <h3 className="text-base font-extrabold text-slate-900 mb-2">{selectedParty.name} Ledger</h3>
-                        <p className="text-xs text-slate-500 mb-4">{selectedParty.phone ? `Phone: ${selectedParty.phone}` : ''}</p>
+                  {/* Right Column: Selected Party Particular Workspace (8 Columns) */}
+                  <div className="lg:col-span-8">
+                    {selectedParty ? (
+                      <div className="space-y-4">
+                        {/* Header Box */}
+                        <div className="bg-slate-900 text-white p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <UserCheck size={18} className="text-sky-400" />
+                              <h3 className="text-lg font-black">{selectedParty.name}</h3>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-0.5">{selectedParty.phone ? `+91 ${selectedParty.phone}` : 'No phone details'}</p>
+                          </div>
+
+                          <div className="text-left sm:text-right">
+                            <p className="text-[10px] uppercase font-bold text-slate-400">Ledger Balance</p>
+                            <h4 className={`text-xl font-black ${partyBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              Rs. {Math.abs(partyBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </h4>
+                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300 inline-block mt-1">
+                              {partyBalance >= 0 ? 'You Get (+ In)' : 'You Give (- Out)'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Direct Entry Buttons Banner */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                          <div>
+                            <h4 className="font-bold text-xs text-slate-900">Record Entry for {selectedParty.name}</h4>
+                            <p className="text-[10px] text-slate-500">Record cash coming in or going out for this party</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button 
+                              onClick={() => { setTxnType('CASH_IN'); setShowModal(true); }}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                            >
+                              <Plus size={15} /> Received (+ Cash In)
+                            </button>
+                            <button 
+                              onClick={() => { setTxnType('CASH_OUT'); setShowModal(true); }}
+                              className="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                            >
+                              <Minus size={15} /> Given (- Cash Out)
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Particular Party Transactions Table */}
+                        <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="bg-slate-100 text-slate-600 text-[10px] uppercase font-black border-b border-slate-200">
+                                <th className="p-3">Date</th>
+                                <th className="p-3">Remarks / Particulars</th>
+                                <th className="p-3">Mode</th>
+                                <th className="p-3 text-right">Given (- Out)</th>
+                                <th className="p-3 text-right">Received (+ In)</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                              {partyTransactions.length === 0 ? (
+                                <tr>
+                                  <td colSpan={5} className="text-center py-10 text-slate-400 font-medium">
+                                    No entries recorded with {selectedParty.name} yet. Click <span className="text-emerald-600 font-bold">+ Received</span> or <span className="text-rose-600 font-bold">- Given</span> above.
+                                  </td>
+                                </tr>
+                              ) : (
+                                partyTransactions.map((t) => (
+                                  <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="p-3 text-slate-500 font-mono">
+                                      {new Date(t.txn_date).toLocaleDateString('en-IN')}
+                                    </td>
+                                    <td className="p-3 font-bold text-slate-800">{t.remarks}</td>
+                                    <td className="p-3">
+                                      <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 rounded text-[9px] font-bold">
+                                        {t.payment_mode}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 text-right font-bold text-rose-600">
+                                      {t.txn_type === 'CASH_OUT' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+                                    </td>
+                                    <td className="p-3 text-right font-bold text-emerald-600">
+                                      {t.txn_type === 'CASH_IN' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-16 text-slate-400 font-medium border-2 border-dashed border-slate-200 rounded-2xl">
+                        Select a party from the left list to view or add entries.
                       </div>
                     )}
                   </div>
@@ -673,7 +809,7 @@ export default function CashLedgerDashboard() {
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
             <h3 className={`text-base font-extrabold uppercase tracking-wider mb-4 ${txnType === 'CASH_IN' ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {txnType === 'CASH_IN' ? '+ Record Cash In Entry' : '- Record Cash Out Entry'}
+              {activeTab === 'parties' && selectedParty ? `${txnType === 'CASH_IN' ? '+ Received From' : '- Given To'} ${selectedParty.name}` : (txnType === 'CASH_IN' ? '+ Record Cash In Entry' : '- Record Cash Out Entry')}
             </h3>
             <form onSubmit={handleAddTransaction} className="space-y-4">
               <div>
@@ -709,7 +845,7 @@ export default function CashLedgerDashboard() {
                   type="text" 
                   value={remarks} 
                   onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="Enter entry details"
+                  placeholder={activeTab === 'parties' && selectedParty ? `e.g. Received for bill` : "Enter entry details"}
                   className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
@@ -747,7 +883,7 @@ export default function CashLedgerDashboard() {
                   required 
                   value={partyName} 
                   onChange={(e) => setPartyName(e.target.value)}
-                  placeholder="Enter party name"
+                  placeholder="e.g. Panwariya Pump"
                   className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
