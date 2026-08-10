@@ -572,66 +572,64 @@ export default function CashLedgerDashboard() {
         [data-nextjs-toast], [data-nextjs-dialog-overlay], #nextjs-dev-indicator { display: none !important; }
       `}</style>
 
-      {/* Responsive Sidebar (Bottom Navigation on Mobile, Left Sidebar on Desktop) */}
-      <aside className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950 text-white flex justify-around items-center border-t border-slate-800 md:static md:w-64 md:flex-col md:justify-between md:border-t-0 md:border-r shrink-0 p-2 md:p-0">
-        
-        {/* Desktop Top Brand */}
-        <div className="hidden md:block p-6 border-b border-slate-800/80 w-full">
-          <div className="flex items-center gap-3">
-            <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="shadow-md shrink-0">
-              <rect width="100" height="100" rx="26" fill="#18181B"/>
-              <rect x="10" y="10" width="80" height="80" rx="20" stroke="#27272A" strokeWidth="2"/>
-              <text x="46" y="63" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="44" fill="#F4F4F5" textAnchor="middle" letterSpacing="-3">CL</text>
-              <circle cx="74" cy="28" r="5" fill="#22C55E"/>
-            </svg>
-            <div>
-              <h1 className="text-lg font-black tracking-tight text-white uppercase">CashLedger</h1>
-              <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Business Cashbook</p>
+      {/* Responsive Sidebar: Hidden on Mobile, Visible on Desktop */}
+      <aside className="hidden md:flex w-64 bg-slate-950 text-white flex-col justify-between border-r border-slate-800 shrink-0">
+        <div>
+          <div className="p-6 border-b border-slate-800/80">
+            <div className="flex items-center gap-3">
+              <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="shadow-md shrink-0">
+                <rect width="100" height="100" rx="26" fill="#18181B"/>
+                <rect x="10" y="10" width="80" height="80" rx="20" stroke="#27272A" strokeWidth="2"/>
+                <text x="46" y="63" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="44" fill="#F4F4F5" textAnchor="middle" letterSpacing="-3">CL</text>
+                <circle cx="74" cy="28" r="5" fill="#22C55E"/>
+              </svg>
+              <div>
+                <h1 className="text-lg font-black tracking-tight text-white uppercase">CashLedger</h1>
+                <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Business Cashbook</p>
+              </div>
             </div>
           </div>
+
+          <nav className="p-4 space-y-1.5">
+            <button 
+              onClick={() => setActiveTab('daybook')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === 'daybook' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+              }`}
+            >
+              <BookOpen size={16} /> Cashbook
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('parties')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === 'parties' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+              }`}
+            >
+              <Users size={16} /> Customers & Parties
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('reports')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === 'reports' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+              }`}
+            >
+              <FileSpreadsheet size={16} /> Reports & Exports
+            </button>
+
+            <button 
+              onClick={() => setActiveTab('settings')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === 'settings' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+              }`}
+            >
+              <Settings size={16} /> Store Profile
+            </button>
+          </nav>
         </div>
 
-        {/* Navigation Tabs (Icons for Mobile, Full for Desktop) */}
-        <nav className="flex md:flex-col justify-around md:justify-start w-full md:p-4 md:space-y-1.5">
-          <button 
-            onClick={() => setActiveTab('daybook')}
-            className={`flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:px-4 md:py-3 rounded-xl font-bold text-[10px] md:text-xs uppercase tracking-wider transition-all cursor-pointer ${
-              activeTab === 'daybook' ? 'text-sky-400 md:bg-sky-600 md:text-white md:shadow-lg md:shadow-sky-600/20' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <BookOpen size={20} /> <span className="text-[10px] md:text-xs">Cashbook</span>
-          </button>
-
-          <button 
-            onClick={() => setActiveTab('parties')}
-            className={`flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:px-4 md:py-3 rounded-xl font-bold text-[10px] md:text-xs uppercase tracking-wider transition-all cursor-pointer ${
-              activeTab === 'parties' ? 'text-sky-400 md:bg-sky-600 md:text-white md:shadow-lg md:shadow-sky-600/20' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Users size={20} /> <span className="text-[10px] md:text-xs">Parties</span>
-          </button>
-
-          <button 
-            onClick={() => setActiveTab('reports')}
-            className={`flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:px-4 md:py-3 rounded-xl font-bold text-[10px] md:text-xs uppercase tracking-wider transition-all cursor-pointer ${
-              activeTab === 'reports' ? 'text-sky-400 md:bg-sky-600 md:text-white md:shadow-lg md:shadow-sky-600/20' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <FileSpreadsheet size={20} /> <span className="text-[10px] md:text-xs">Reports</span>
-          </button>
-
-          <button 
-            onClick={() => setActiveTab('settings')}
-            className={`flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:px-4 md:py-3 rounded-xl font-bold text-[10px] md:text-xs uppercase tracking-wider transition-all cursor-pointer ${
-              activeTab === 'settings' ? 'text-sky-400 md:bg-sky-600 md:text-white md:shadow-lg md:shadow-sky-600/20' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Settings size={20} /> <span className="text-[10px] md:text-xs">Profile</span>
-          </button>
-        </nav>
-
-        {/* Desktop Bottom User Profile & Logout */}
-        <div className="hidden md:block p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-3 w-auto">
+        <div className="p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-3">
           <div>
             <div className="text-xs font-bold text-white truncate">{businessName}</div>
             <div className="text-[10px] text-slate-400 font-semibold truncate">{user?.email}</div>
@@ -646,8 +644,47 @@ export default function CashLedgerDashboard() {
         </div>
       </aside>
 
-      {/* Main Workspace (Added bottom padding on mobile so content isn't hidden behind the bottom navbar) */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden pb-16 md:pb-0">
+      {/* Mobile Bottom Navigation Bar (App Like Experience) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-950 text-white flex justify-around items-center border-t border-slate-800 p-2 shadow-2xl">
+        <button 
+          onClick={() => setActiveTab('daybook')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
+            activeTab === 'daybook' ? 'text-sky-400' : 'text-slate-400'
+          }`}
+        >
+          <BookOpen size={20} /> Cashbook
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('parties')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
+            activeTab === 'parties' ? 'text-sky-400' : 'text-slate-400'
+          }`}
+        >
+          <Users size={20} /> Parties
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('reports')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
+            activeTab === 'reports' ? 'text-sky-400' : 'text-slate-400'
+          }`}
+        >
+          <FileSpreadsheet size={20} /> Reports
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('settings')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
+            activeTab === 'settings' ? 'text-sky-400' : 'text-slate-400'
+          }`}
+        >
+          <Settings size={20} /> Profile
+        </button>
+      </nav>
+
+      {/* Main Workspace (With bottom padding on mobile so content isn't hidden behind the bottom bar) */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden pb-20 md:pb-0">
         <header className="bg-white border-b border-slate-200/80 px-4 md:px-8 py-4 md:py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
           <div>
             <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
