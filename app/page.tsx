@@ -16,10 +16,18 @@ import {
   CheckCircle2,
   UserPlus,
   Trash2,
-  UserCheck
+  UserCheck,
+  LogOut,
+  LogIn
 } from 'lucide-react';
+import { auth, googleProvider, db } from '../lib/firebase';
+import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { collection, doc, setDoc, onSnapshot, query, where, deleteDoc } from 'firebase/firestore';
 
 export default function CashLedgerDashboard() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
   const [activeTab, setActiveTab] = useState('daybook');
   const [transactions, setTransactions] = useState<any[]>([]);
   const [parties, setParties] = useState<any[]>([]);
@@ -46,33 +54,80 @@ export default function CashLedgerDashboard() {
   const [address, setAddress] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Load Saved Data
+  // 1. Auth Listener
   useEffect(() => {
-    try {
-      const savedTxns = localStorage.getItem('cl_transactions');
-      if (savedTxns) setTransactions(JSON.parse(savedTxns));
-
-      const savedParties = localStorage.getItem('cl_parties');
-      if (savedParties) {
-        const parsedParties = JSON.parse(savedParties);
-        setParties(parsedParties);
-        if (parsedParties.length > 0 && !selectedParty) {
-          setSelectedParty(parsedParties[0]);
-        }
-      }
-
-      const savedProfile = localStorage.getItem('cl_profile');
-      if (savedProfile) {
-        const p = JSON.parse(savedProfile);
-        setBusinessName(p.businessName || 'My Business');
-        setPhone(p.phone || '');
-        setEmail(p.email || '');
-        setAddress(p.address || '');
-      }
-    } catch (e) {
-      console.error(e);
-    }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
+
+  // 2. Fetch User Specific Cloud Data from Firestore
+  useEffect(() => {
+    if (!user) {
+      setTransactions([]);
+      setParties([]);
+      setSelectedParty(null);
+      return;
+    }
+
+    // Realtime Transactions Sync for Logged-In User
+    const qTxns = query(collection(db, 'transactions'), where('userId', '==', user.uid));
+    const unsubTxns = onSnapshot(qTxns, (snapshot) => {
+      const txnsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      txnsData.sort((a: any, b: any) => new Date(b.txn_date).getTime() - new Date(a.txn_date).getTime());
+      setTransactions(txnsData);
+    });
+
+    // Realtime Parties Sync for Logged-In User
+    const qParties = query(collection(db, 'parties'), where('userId', '==', user.uid));
+    const unsubParties = onSnapshot(qParties, (snapshot) => {
+      const partiesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setParties(partiesData);
+      if (partiesData.length > 0 && !selectedParty) {
+        setSelectedParty(partiesData[0]);
+      }
+    });
+
+    // Load Profile
+    const unsubProfile = onSnapshot(doc(db, 'profiles', user.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        const p = docSnap.data();
+        setBusinessName(p.businessName || user.displayName || 'My Business');
+        setPhone(p.phone || '');
+        setEmail(p.email || user.email || '');
+        setAddress(p.address || '');
+      } else {
+        setBusinessName(user.displayName || 'My Business');
+        setEmail(user.email || '');
+      }
+    });
+
+    return () => {
+      unsubTxns();
+      unsubParties();
+      unsubProfile();
+    };
+  }, [user]);
+
+  // Google Login & Logout Handlers
+  const handleGoogleLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Login failed:", error);
+      alert("Login failed. Please try again.");
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   // Summary Calculations
   const totalCashIn = transactions
@@ -100,50 +155,46 @@ export default function CashLedgerDashboard() {
 
   const partyBalance = partyCashIn - partyCashOut;
 
-  // Add Transaction
-  const handleAddTransaction = (e: React.FormEvent) => {
+  // Add Transaction Entry to Firestore
+  const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || parseFloat(amount) <= 0) return;
+    if (!user || !amount || parseFloat(amount) <= 0) return;
 
     try {
-      const newTxn = {
-        id: Date.now(),
+      const txnId = `txn_${Date.now()}`;
+      await setDoc(doc(db, 'transactions', txnId), {
+        userId: user.uid,
         party_id: activeTab === 'parties' && selectedParty ? selectedParty.id : null,
         txn_type: txnType,
         amount: parseFloat(amount),
         payment_mode: paymentMode,
         remarks: remarks || (activeTab === 'parties' && selectedParty ? `${txnType === 'CASH_IN' ? 'Payment from' : 'Payment to'} ${selectedParty.name}` : 'Cash Transaction'),
         txn_date: new Date().toISOString()
-      };
-
-      const updated = [newTxn, ...transactions];
-      setTransactions(updated);
-      localStorage.setItem('cl_transactions', JSON.stringify(updated));
+      });
 
       setShowModal(false);
       setAmount('');
       setRemarks('');
     } catch (err) {
-      alert('Failed to save entry.');
+      alert('Failed to save entry in cloud.');
     }
   };
 
-  // Add Party
-  const handleAddParty = (e: React.FormEvent) => {
+  // Add Party to Firestore
+  const handleAddParty = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!partyName) return;
+    if (!user || !partyName) return;
 
     try {
-      const newParty = {
-        id: Date.now(),
+      const partyId = `party_${Date.now()}`;
+      const newPartyData = {
+        userId: user.uid,
         name: partyName,
         phone: partyPhone
       };
 
-      const updated = [newParty, ...parties];
-      setParties(updated);
-      localStorage.setItem('cl_parties', JSON.stringify(updated));
-      setSelectedParty(newParty);
+      await setDoc(doc(db, 'parties', partyId), newPartyData);
+      setSelectedParty({ id: partyId, ...newPartyData });
 
       setShowAddPartyModal(false);
       setPartyName('');
@@ -153,38 +204,32 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // Save Profile
-  const handleSaveProfile = (e: React.FormEvent) => {
+  // Save Profile to Firestore
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    const profile = { businessName, phone, email, address };
-    localStorage.setItem('cl_profile', JSON.stringify(profile));
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
-  };
+    if (!user) return;
 
-  // Clear Entries
-  const handlePurgeData = () => {
-    if (confirm('Are you sure you want to clear all transaction records?')) {
-      localStorage.removeItem('cl_transactions');
-      localStorage.removeItem('cl_parties');
-      setTransactions([]);
-      setParties([]);
-      setSelectedParty(null);
+    try {
+      await setDoc(doc(db, 'profiles', user.uid), {
+        userId: user.uid,
+        businessName,
+        phone,
+        email: user.email,
+        address
+      });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (e) {
+      alert('Failed to save profile.');
     }
   };
 
-  // PDF Generator: Forced Times New Roman + Logo before CashLedger text
+  // PDF Report Generator
   const downloadPDF = async () => {
     const { default: jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
 
-    const doc = new jsPDF({
-      orientation: 'p',
-      unit: 'mm',
-      format: 'a4'
-    });
-
-    // Explicitly set default Times font
+    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     doc.setFont('times', 'normal');
 
     const badgeText = businessName
@@ -195,12 +240,10 @@ export default function CashLedgerDashboard() {
       .substring(0, 2)
       .toUpperCase() || 'CB';
 
-    // 1. Outer Frame Border
     doc.setDrawColor(15, 23, 42);
     doc.setLineWidth(0.8);
     doc.rect(8, 8, 194, 281);
 
-    // 2. Top Header Logo Badge
     doc.setFillColor(24, 24, 27);
     doc.roundedRect(14, 14, 16, 16, 3, 3, 'F');
     doc.setTextColor(244, 244, 245);
@@ -208,7 +251,6 @@ export default function CashLedgerDashboard() {
     doc.setFont('times', 'bold');
     doc.text(badgeText, 17, 24);
 
-    // 3. Store Header Details (Times New Roman Bold)
     doc.setTextColor(15, 23, 42);
     doc.setFontSize(14);
     doc.setFont('times', 'bold');
@@ -224,7 +266,6 @@ export default function CashLedgerDashboard() {
     doc.setFont('times', 'normal');
     doc.text(contactLine || 'Statement Summary', 34, 26);
 
-    // 4. Document Title
     doc.setTextColor(2, 132, 199);
     doc.setFontSize(13);
     doc.setFont('times', 'bold');
@@ -235,12 +276,10 @@ export default function CashLedgerDashboard() {
     doc.setFont('times', 'normal');
     doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 196, 26, { align: 'right' });
 
-    // Divider Line
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.5);
     doc.line(14, 34, 196, 34);
 
-    // 5. Metric Cards
     doc.setFillColor(240, 253, 244);
     doc.setDrawColor(187, 247, 208);
     doc.roundedRect(14, 38, 56, 18, 2, 2, 'FD');
@@ -274,7 +313,6 @@ export default function CashLedgerDashboard() {
     doc.setFontSize(11);
     doc.text(`Rs. ${Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })} ${netBalance >= 0 ? 'Cr' : 'Dr'}`, 138, 51);
 
-    // 6. Data Table in Times New Roman Font
     const tableData = transactions.map((t) => {
       const p = parties.find(party => party.id === t.party_id);
       return [
@@ -291,59 +329,32 @@ export default function CashLedgerDashboard() {
       head: [['DATE', 'PARTICULARS / REMARKS', 'MODE', 'DEBIT (RS.)', 'CREDIT (RS.)']],
       body: tableData.length > 0 ? tableData : [['-', 'No transactions recorded', '-', '-', '-']],
       theme: 'grid',
-      styles: {
-        font: 'times',
-        fontSize: 9
-      },
-      headStyles: {
-        fillColor: [15, 23, 42],
-        textColor: [255, 255, 255],
-        fontSize: 9,
-        fontStyle: 'bold',
-        font: 'times'
-      },
-      bodyStyles: {
-        fontSize: 9,
-        textColor: [51, 65, 85],
-        font: 'times'
-      },
-      columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 80 },
-        2: { cellWidth: 22 },
-        3: { cellWidth: 27, halign: 'right' },
-        4: { cellWidth: 28, halign: 'right' }
-      },
+      styles: { font: 'times', fontSize: 9 },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', font: 'times' },
+      bodyStyles: { fontSize: 9, textColor: [51, 65, 85], font: 'times' },
+      columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 80 }, 2: { cellWidth: 22 }, 3: { cellWidth: 27, halign: 'right' }, 4: { cellWidth: 28, halign: 'right' } },
       margin: { left: 14, right: 14 }
     });
 
-    // 7. Footer: [LOGO BADGE] -> "CashLedger" (Exact Bottom Right Alignment)
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
-      
-      // Bottom Left Note
       doc.setTextColor(100, 116, 139);
       doc.setFontSize(8.5);
       doc.setFont('times', 'normal');
       doc.text('* Computer Generated Statement', 14, 281);
 
-      // Bottom Right: LOGO BADGE FIRST, THEN TEXT "CashLedger"
-      // Logo Badge Box at x = 160mm, y = 275.5mm
       doc.setFillColor(24, 24, 27);
       doc.roundedRect(160, 275.5, 8, 8, 2, 2, 'F');
       
-      // "CL" inside logo badge
       doc.setTextColor(244, 244, 245);
       doc.setFontSize(6);
       doc.setFont('times', 'bold');
       doc.text('CL', 161.3, 281);
 
-      // Neon Green Indicator Dot on Logo
       doc.setFillColor(34, 197, 94);
       doc.circle(166, 277.5, 0.7, 'F');
 
-      // "CashLedger" Text RIGHT AFTER LOGO BADGE (x = 170mm)
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(10.5);
       doc.setFont('times', 'bold');
@@ -363,6 +374,56 @@ export default function CashLedgerDashboard() {
     (p.phone && p.phone.includes(partySearchTerm))
   );
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex justify-center items-center text-white font-bold">
+        Loading CashLedger Cloud Session...
+      </div>
+    );
+  }
+
+  // LOGIN SCREEN (If user is not logged in)
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4">
+        <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl space-y-6">
+          <div className="mx-auto w-16 h-16 flex items-center justify-center">
+            <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="100" height="100" rx="26" fill="#18181B"/>
+              <rect x="10" y="10" width="80" height="80" rx="20" stroke="#27272A" strokeWidth="2"/>
+              <text x="46" y="63" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="44" fill="#F4F4F5" textAnchor="middle" letterSpacing="-3">CL</text>
+              <circle cx="74" cy="28" r="5" fill="#22C55E"/>
+            </svg>
+          </div>
+
+          <div>
+            <h1 className="text-2xl font-black text-white tracking-tight">Welcome to CashLedger</h1>
+            <p className="text-xs text-slate-400 mt-1">Secure cloud-based digital business cashbook</p>
+          </div>
+
+          <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 text-left space-y-2">
+            <p className="text-xs text-emerald-400 font-bold">✓ Permanent Cloud Sync</p>
+            <p className="text-xs text-slate-300">Log in with your Gmail to access your personal ledger anywhere, anytime.</p>
+          </div>
+
+          <button 
+            onClick={handleGoogleLogin}
+            className="w-full bg-white hover:bg-slate-100 text-slate-900 font-bold py-3.5 px-4 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-3 shadow-lg cursor-pointer transition-all"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            Continue with Google
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // DASHBOARD MAIN VIEW
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
       <style jsx global>{`
@@ -426,9 +487,18 @@ export default function CashLedgerDashboard() {
           </nav>
         </div>
 
-        <div className="p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800">
-          <div className="text-xs font-bold text-white truncate">{businessName}</div>
-          {phone && <div className="text-[10px] text-slate-400 font-semibold mt-0.5">+91 {phone}</div>}
+        <div className="p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-3">
+          <div>
+            <div className="text-xs font-bold text-white truncate">{businessName}</div>
+            <div className="text-[10px] text-slate-400 font-semibold truncate">{user.email}</div>
+          </div>
+
+          <button 
+            onClick={handleLogout}
+            className="w-full bg-slate-800 hover:bg-rose-900/40 hover:text-rose-400 text-slate-300 py-2 rounded-xl text-[11px] font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+          >
+            <LogOut size={13} /> Sign Out
+          </button>
         </div>
       </aside>
 
@@ -537,7 +607,7 @@ export default function CashLedgerDashboard() {
                     {filteredTransactions.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="text-center py-12 text-slate-400 font-medium">
-                          No transactions recorded yet.
+                          No transactions recorded yet in your cloud account.
                         </td>
                       </tr>
                     ) : (
@@ -831,14 +901,6 @@ export default function CashLedgerDashboard() {
                     className="bg-slate-950 text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
                   >
                     Save Changes
-                  </button>
-
-                  <button 
-                    type="button"
-                    onClick={handlePurgeData}
-                    className="text-rose-600 hover:bg-rose-50 px-4 py-2 rounded-xl text-xs font-bold uppercase flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Trash2 size={14} /> Clear All Entries
                   </button>
                 </div>
               </form>
