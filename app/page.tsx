@@ -17,7 +17,9 @@ import {
   UserPlus,
   Trash2,
   UserCheck,
-  LogOut
+  LogOut,
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
@@ -112,7 +114,7 @@ export default function CashLedgerDashboard() {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error("Login failed:", error);
-      alert("Login failed. Check internet connection.");
+      alert("Login failed. Please check internet connection.");
     }
   };
 
@@ -371,42 +373,68 @@ export default function CashLedgerDashboard() {
     );
   }
 
-  // GOOGLE LOGIN SCREEN
+  // OPTION 2: SLEEK GLASSMORPHISM FINTECH LOGIN SCREEN
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4">
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl space-y-6">
-          <div className="mx-auto w-16 h-16 flex items-center justify-center">
-            <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="100" height="100" rx="26" fill="#18181B"/>
-              <rect x="10" y="10" width="80" height="80" rx="20" stroke="#27272A" strokeWidth="2"/>
-              <text x="46" y="63" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="44" fill="#F4F4F5" textAnchor="middle" letterSpacing="-3">CL</text>
-              <circle cx="74" cy="28" r="5" fill="#22C55E"/>
-            </svg>
+      <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 antialiased relative overflow-hidden">
+        {/* Ambient Subtle Background Accent Gradients */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 translate-y-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        {/* Glassmorphic Container Card */}
+        <div className="bg-slate-900/70 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-8 max-w-sm w-full shadow-2xl relative z-10 space-y-6">
+          
+          {/* Top Status & Branding */}
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800/60">
+            <div className="flex items-center gap-2.5">
+              <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+                <rect width="100" height="100" rx="26" fill="#18181B"/>
+                <rect x="10" y="10" width="80" height="80" rx="20" stroke="#27272A" strokeWidth="2"/>
+                <text x="46" y="63" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="44" fill="#F4F4F5" textAnchor="middle" letterSpacing="-3">CL</text>
+                <circle cx="74" cy="28" r="5" fill="#22C55E"/>
+              </svg>
+              <span className="font-extrabold text-white text-sm tracking-wide uppercase">CashLedger</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-800/50 px-2.5 py-1 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Cloud Live</span>
+            </div>
           </div>
 
-          <div>
-            <h1 className="text-2xl font-black text-white tracking-tight">Welcome to CashLedger</h1>
-            <p className="text-xs text-slate-400 mt-1">Secure cloud-based digital business cashbook</p>
+          {/* Core Title */}
+          <div className="space-y-1 text-left pt-1">
+            <h1 className="text-xl font-black text-white tracking-tight">Enterprise Cashbook</h1>
+            <p className="text-xs text-slate-400 font-medium leading-relaxed">
+              Secure digital ledger management for your business accounts.
+            </p>
           </div>
 
-          <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 text-left space-y-2">
-            <p className="text-xs text-emerald-400 font-bold">✓ Permanent Cloud Sync</p>
-            <p className="text-xs text-slate-300">Log in with your Gmail to access your personal ledger anywhere, anytime.</p>
-          </div>
-
+          {/* Clean Google Single Sign-On Button */}
           <button 
             onClick={handleGoogleLogin}
-            className="w-full bg-white hover:bg-slate-100 text-slate-900 font-bold py-3.5 px-4 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-3 shadow-lg cursor-pointer transition-all"
+            className="w-full bg-white hover:bg-slate-100 text-slate-900 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-3 shadow-lg cursor-pointer transition-all duration-200 border border-slate-200 hover:shadow-sky-500/10"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24">
+            <svg width="18" height="18" viewBox="0 0 24 24" className="shrink-0">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
             </svg>
-            Continue with Google
+            Sign in with Google
           </button>
+
+          {/* Minimal Security Footer */}
+          <div className="pt-2 flex items-center justify-center gap-4 text-[11px] text-slate-500 font-medium">
+            <span className="flex items-center gap-1">
+              <Lock size={12} className="text-slate-400" /> Encrypted Sync
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1">
+              <ShieldCheck size={12} className="text-slate-400" /> Multi-User Isolated
+            </span>
+          </div>
+
         </div>
       </div>
     );
