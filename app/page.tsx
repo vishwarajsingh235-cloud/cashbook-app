@@ -214,6 +214,7 @@ export default function CashLedgerDashboard() {
     }
   };
 
+  // FULL CASHBOOK STATEMENT PDF
   const downloadPDF = async () => {
     const { default: jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
@@ -353,6 +354,163 @@ export default function CashLedgerDashboard() {
     doc.save(`${businessName.replace(/[^a-zA-Z0-9]/g, '_')}_Statement.pdf`);
   };
 
+  // INDIVIDUAL PARTY STATEMENT PDF
+  const downloadPartyPDF = async () => {
+    if (!selectedParty) return;
+
+    const { default: jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+
+    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    doc.setFont('times', 'normal');
+
+    const badgeText = businessName
+      .trim()
+      .split(' ')
+      .map(w => w[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase() || 'CB';
+
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(0.8);
+    doc.rect(8, 8, 194, 281);
+
+    doc.setFillColor(24, 24, 27);
+    doc.roundedRect(14, 14, 16, 16, 3, 3, 'F');
+    doc.setTextColor(244, 244, 245);
+    doc.setFontSize(11);
+    doc.setFont('times', 'bold');
+    doc.text(badgeText, 17, 24);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(14);
+    doc.setFont('times', 'bold');
+    doc.text(businessName.toUpperCase(), 34, 20);
+
+    const contactLine = [
+      phone ? `Phone: +91 ${phone}` : '',
+      address ? `Address: ${address}` : ''
+    ].filter(Boolean).join(' | ');
+
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(9);
+    doc.setFont('times', 'normal');
+    doc.text(contactLine || 'Party Ledger Statement', 34, 26);
+
+    doc.setTextColor(2, 132, 199);
+    doc.setFontSize(13);
+    doc.setFont('times', 'bold');
+    doc.text('PARTY STATEMENT', 196, 20, { align: 'right' });
+
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(9);
+    doc.setFont('times', 'normal');
+    doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 196, 26, { align: 'right' });
+
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.5);
+    doc.line(14, 34, 196, 34);
+
+    // Party Details Box
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(14, 38, 182, 14, 2, 2, 'FD');
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(11);
+    doc.setFont('times', 'bold');
+    doc.text(`PARTY: ${selectedParty.name.toUpperCase()}`, 18, 46);
+
+    if (selectedParty.phone) {
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(9);
+      doc.setFont('times', 'normal');
+      doc.text(`Phone: +91 ${selectedParty.phone}`, 120, 46);
+    }
+
+    // Party Balance Boxes
+    doc.setFillColor(240, 253, 244);
+    doc.setDrawColor(187, 247, 208);
+    doc.roundedRect(14, 56, 56, 18, 2, 2, 'FD');
+    doc.setTextColor(21, 128, 61);
+    doc.setFontSize(8);
+    doc.setFont('times', 'bold');
+    doc.text('TOTAL RECEIVED (+IN)', 18, 61);
+    doc.setTextColor(22, 163, 74);
+    doc.setFontSize(11);
+    doc.text(`Rs. ${partyCashIn.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 18, 69);
+
+    doc.setFillColor(254, 242, 242);
+    doc.setDrawColor(254, 202, 202);
+    doc.roundedRect(74, 56, 56, 18, 2, 2, 'FD');
+    doc.setTextColor(185, 28, 28);
+    doc.setFontSize(8);
+    doc.setFont('times', 'bold');
+    doc.text('TOTAL GIVEN (-OUT)', 78, 61);
+    doc.setTextColor(220, 38, 38);
+    doc.setFontSize(11);
+    doc.text(`Rs. ${partyCashOut.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 78, 69);
+
+    doc.setFillColor(240, 249, 255);
+    doc.setDrawColor(186, 230, 253);
+    doc.roundedRect(134, 56, 62, 18, 2, 2, 'FD');
+    doc.setTextColor(3, 105, 161);
+    doc.setFontSize(8);
+    doc.setFont('times', 'bold');
+    doc.text('NET BALANCE', 138, 61);
+    doc.setTextColor(2, 132, 199);
+    doc.setFontSize(11);
+    doc.text(`Rs. ${Math.abs(partyBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })} ${partyBalance >= 0 ? '(You Get)' : '(You Give)'}`, 138, 69);
+
+    const tableData = partyTransactions.map((t) => [
+      new Date(t.txn_date).toLocaleDateString('en-IN'),
+      t.remarks || 'Cash Entry',
+      t.payment_mode || 'Cash',
+      t.txn_type === 'CASH_OUT' ? parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-',
+      t.txn_type === 'CASH_IN' ? parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-'
+    ]);
+
+    autoTable(doc, {
+      startY: 79,
+      head: [['DATE', 'REMARKS / PARTICULARS', 'MODE', 'GIVEN (RS.)', 'RECEIVED (RS.)']],
+      body: tableData.length > 0 ? tableData : [['-', `No entries recorded for ${selectedParty.name}`, '-', '-', '-']],
+      theme: 'grid',
+      styles: { font: 'times', fontSize: 9 },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', font: 'times' },
+      bodyStyles: { fontSize: 9, textColor: [51, 65, 85], font: 'times' },
+      columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 80 }, 2: { cellWidth: 22 }, 3: { cellWidth: 27, halign: 'right' }, 4: { cellWidth: 28, halign: 'right' } },
+      margin: { left: 14, right: 14 }
+    });
+
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(8.5);
+      doc.setFont('times', 'normal');
+      doc.text('* Computer Generated Statement', 14, 281);
+
+      doc.setFillColor(24, 24, 27);
+      doc.roundedRect(160, 275.5, 8, 8, 2, 2, 'F');
+      
+      doc.setTextColor(244, 244, 245);
+      doc.setFontSize(6);
+      doc.setFont('times', 'bold');
+      doc.text('CL', 161.3, 281);
+
+      doc.setFillColor(34, 197, 94);
+      doc.circle(166, 277.5, 0.7, 'F');
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(10.5);
+      doc.setFont('times', 'bold');
+      doc.text('CashLedger', 170, 281.5);
+    }
+
+    doc.save(`${selectedParty.name.replace(/[^a-zA-Z0-9]/g, '_')}_Statement.pdf`);
+  };
+
   const filteredTransactions = transactions.filter(t => 
     (t.remarks && t.remarks.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (t.payment_mode && t.payment_mode.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -371,13 +529,11 @@ export default function CashLedgerDashboard() {
     );
   }
 
-  // SAMPLE 1: MINIMALIST CORPORATE LIGHT LOGIN
   if (!user) {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col justify-center items-center p-4 font-sans antialiased">
         <div className="bg-white border border-slate-200/80 rounded-2xl p-8 max-w-sm w-full shadow-sm text-center space-y-6">
           
-          {/* Logo Branding */}
           <div className="flex justify-center items-center gap-2.5">
             <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
               <rect width="100" height="100" rx="26" fill="#18181B"/>
@@ -388,13 +544,11 @@ export default function CashLedgerDashboard() {
             <span className="font-extrabold text-slate-900 text-lg tracking-tight uppercase">CashLedger</span>
           </div>
 
-          {/* Title & Subtitle */}
           <div className="space-y-1">
             <h1 className="text-xl font-bold text-slate-900">Sign in to your account</h1>
             <p className="text-xs text-slate-500 font-medium">Access your daily cashbook and customer balances</p>
           </div>
 
-          {/* Natural Standard Google Sign-In Button */}
           <button 
             onClick={handleGoogleLogin}
             className="w-full bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-3 border border-slate-300 shadow-sm cursor-pointer transition-all"
@@ -408,7 +562,6 @@ export default function CashLedgerDashboard() {
             Continue with Google
           </button>
 
-          {/* Simple Note */}
           <div className="pt-2 border-t border-slate-100">
             <p className="text-[11px] text-slate-400 font-medium">By continuing, your data syncs securely with your account.</p>
           </div>
@@ -734,14 +887,24 @@ export default function CashLedgerDashboard() {
                             <p className="text-xs text-slate-400 mt-0.5">{selectedParty.phone ? `+91 ${selectedParty.phone}` : 'No phone details'}</p>
                           </div>
 
-                          <div className="text-left sm:text-right">
-                            <p className="text-[10px] uppercase font-bold text-slate-400">Ledger Balance</p>
-                            <h4 className={`text-xl font-black ${partyBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                              Rs. {Math.abs(partyBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </h4>
-                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300 inline-block mt-1">
-                              {partyBalance >= 0 ? 'You Get (+ In)' : 'You Give (- Out)'}
-                            </span>
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                            <div className="text-left sm:text-right">
+                              <p className="text-[10px] uppercase font-bold text-slate-400">Ledger Balance</p>
+                              <h4 className={`text-xl font-black ${partyBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                Rs. {Math.abs(partyBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              </h4>
+                              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300 inline-block mt-1">
+                                {partyBalance >= 0 ? 'You Get (+ In)' : 'You Give (- Out)'}
+                              </span>
+                            </div>
+
+                            {/* Download Party Statement PDF Button */}
+                            <button 
+                              onClick={downloadPartyPDF}
+                              className="bg-sky-600 hover:bg-sky-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase flex items-center gap-1.5 cursor-pointer shadow-md transition-all self-stretch sm:self-auto justify-center"
+                            >
+                              <Download size={14} /> PDF Statement
+                            </button>
                           </div>
                         </div>
 
