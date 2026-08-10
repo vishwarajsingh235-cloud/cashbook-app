@@ -11,7 +11,6 @@ import {
   FileSpreadsheet, 
   Settings, 
   Search,
-  Building2,
   Download,
   FileText,
   CheckCircle2,
@@ -38,7 +37,7 @@ export default function CashLedgerDashboard() {
   const [remarks, setRemarks] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Profile Fields (Customizable defaults)
+  // Profile Fields
   const [businessName, setBusinessName] = useState('My Business');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -160,7 +159,6 @@ export default function CashLedgerDashboard() {
 
     const doc = new jsPDF('p', 'mm', 'a4');
 
-    // Dynamic Initials for Logo Badge
     const badgeText = businessName
       .trim()
       .split(' ')
@@ -175,10 +173,10 @@ export default function CashLedgerDashboard() {
     doc.rect(8, 8, 194, 281);
 
     // Logo Badge
-    doc.setFillColor(15, 23, 42);
+    doc.setFillColor(24, 24, 27);
     doc.roundedRect(14, 14, 16, 16, 3, 3, 'F');
-    doc.setTextColor(56, 189, 248);
-    doc.setFontSize(12);
+    doc.setTextColor(244, 244, 245);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.text(badgeText, 17, 24);
 
@@ -295,7 +293,7 @@ export default function CashLedgerDashboard() {
     doc.setFont('helvetica', 'bold');
     doc.text('Authorized Signatory', 173, finalY + 16, { align: 'center' });
 
-    doc.save(`${businessName.replace(/[^a-zA-Z0-0]/g, '_')}_Statement.pdf`);
+    doc.save(`${businessName.replace(/[^a-zA-Z0-9]/g, '_')}_Statement.pdf`);
   };
 
   const filteredTransactions = transactions.filter(t => 
@@ -314,9 +312,12 @@ export default function CashLedgerDashboard() {
         <div>
           <div className="p-6 border-b border-slate-800/80">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-sky-500/10 border border-sky-500/20 rounded-xl text-sky-400">
-                <Building2 size={22} />
-              </div>
+              <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="shadow-md shrink-0">
+                <rect width="100" height="100" rx="26" fill="#18181B"/>
+                <rect x="10" y="10" width="80" height="80" rx="20" stroke="#27272A" strokeWidth="2"/>
+                <text x="46" y="63" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="44" fill="#F4F4F5" textAnchor="middle" letterSpacing="-3">CL</text>
+                <circle cx="74" cy="28" r="5" fill="#22C55E"/>
+              </svg>
               <div>
                 <h1 className="text-lg font-black tracking-tight text-white uppercase">CashLedger</h1>
                 <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Business Cashbook</p>
@@ -364,8 +365,8 @@ export default function CashLedgerDashboard() {
         </div>
 
         <div className="p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800">
-          <div className="text-xs font-bold text-white mb-0.5 truncate">{businessName}</div>
-          <div className="text-[10px] text-emerald-400 font-bold uppercase">{phone ? `+91 ${phone}` : 'Active Session'}</div>
+          <div className="text-xs font-bold text-white truncate">{businessName}</div>
+          {phone && <div className="text-[10px] text-slate-400 font-semibold mt-0.5">+91 {phone}</div>}
         </div>
       </aside>
 
@@ -570,7 +571,7 @@ export default function CashLedgerDashboard() {
               <div className="p-6 border border-slate-200/80 rounded-2xl hover:border-sky-500 transition-all bg-slate-50/30 max-w-md">
                 <FileText size={32} className="text-sky-600 mb-3" />
                 <h4 className="font-bold text-slate-900 text-base">PDF Account Statement</h4>
-                <p className="text-xs text-slate-500 mt-1 mb-5">Formatted A4 PDF report for {businessName}.</p>
+                <p className="text-xs text-slate-500 mt-1 mb-5">Printable A4 PDF statement</p>
                 
                 <button 
                   onClick={downloadPDF}
