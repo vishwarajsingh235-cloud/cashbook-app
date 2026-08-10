@@ -152,7 +152,7 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // PDF Report Generator
+  // PDF Report Generator with Logo on Bottom Right Corner
   const downloadPDF = async () => {
     const { default: jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
@@ -172,7 +172,7 @@ export default function CashLedgerDashboard() {
     doc.setLineWidth(0.8);
     doc.rect(8, 8, 194, 281);
 
-    // Logo Badge
+    // Top Header Logo Badge
     doc.setFillColor(24, 24, 27);
     doc.roundedRect(14, 14, 16, 16, 3, 3, 'F');
     doc.setTextColor(244, 244, 245);
@@ -280,18 +280,34 @@ export default function CashLedgerDashboard() {
       margin: { left: 14, right: 14 }
     });
 
-    // Footer
-    const finalY = (doc as any).lastAutoTable?.finalY || 100;
-    doc.setTextColor(100, 116, 139);
-    doc.setFontSize(7);
-    doc.text('* Computer Generated Statement', 14, finalY + 12);
+    // Footer with CashLedger Logo on Bottom Right Corner
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(7);
+      doc.text('* Computer Generated Statement', 14, 282);
 
-    doc.setDrawColor(15, 23, 42);
-    doc.line(150, finalY + 12, 196, finalY + 12);
-    doc.setTextColor(15, 23, 42);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Authorized Signatory', 173, finalY + 16, { align: 'center' });
+      // Bottom Right Branding: "CashLedger" text + Neon Icon Badge
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CashLedger', 174, 281, { align: 'right' });
+
+      // Neon Logo Badge Box
+      doc.setFillColor(24, 24, 27);
+      doc.roundedRect(177, 276, 7, 7, 1.5, 1.5, 'F');
+      
+      doc.setTextColor(244, 244, 245);
+      doc.setFontSize(5);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CL', 178.2, 281);
+
+      // Neon Green Indicator Dot
+      doc.setFillColor(34, 197, 94);
+      doc.circle(182.5, 277.5, 0.6, 'F');
+    }
 
     doc.save(`${businessName.replace(/[^a-zA-Z0-9]/g, '_')}_Statement.pdf`);
   };
@@ -312,6 +328,7 @@ export default function CashLedgerDashboard() {
         <div>
           <div className="p-6 border-b border-slate-800/80">
             <div className="flex items-center gap-3">
+              {/* Neon CL App Icon */}
               <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="shadow-md shrink-0">
                 <rect width="100" height="100" rx="26" fill="#18181B"/>
                 <rect x="10" y="10" width="80" height="80" rx="20" stroke="#27272A" strokeWidth="2"/>
