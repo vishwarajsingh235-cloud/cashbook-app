@@ -568,69 +568,69 @@ export default function CashLedgerDashboard() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
       <style jsx global>{`
         [data-nextjs-toast], [data-nextjs-dialog-overlay], #nextjs-dev-indicator { display: none !important; }
       `}</style>
 
-      {/* Sidebar */}
-      <aside className="w-64 bg-slate-950 text-white flex flex-col justify-between hidden md:flex border-r border-slate-800 shrink-0">
-        <div>
-          <div className="p-6 border-b border-slate-800/80">
+      {/* Sidebar (Responsive: Bottom/Top on mobile, Left on Desktop) */}
+      <aside className="w-full md:w-64 bg-slate-950 text-white flex flex-row md:flex-col justify-between border-b md:border-b-0 md:border-r border-slate-800 shrink-0 p-4 md:p-0">
+        <div className="flex md:flex-col items-center md:items-stretch justify-between md:justify-start w-full">
+          <div className="p-2 md:p-6 md:border-b border-slate-800/80">
             <div className="flex items-center gap-3">
-              <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="shadow-md shrink-0">
+              <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="shadow-md shrink-0">
                 <rect width="100" height="100" rx="26" fill="#18181B"/>
                 <rect x="10" y="10" width="80" height="80" rx="20" stroke="#27272A" strokeWidth="2"/>
                 <text x="46" y="63" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="44" fill="#F4F4F5" textAnchor="middle" letterSpacing="-3">CL</text>
                 <circle cx="74" cy="28" r="5" fill="#22C55E"/>
               </svg>
-              <div>
-                <h1 className="text-lg font-black tracking-tight text-white uppercase">CashLedger</h1>
-                <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Business Cashbook</p>
+              <div className="hidden sm:block">
+                <h1 className="text-base md:text-lg font-black tracking-tight text-white uppercase">CashLedger</h1>
+                <p className="text-[9px] text-slate-400 font-semibold tracking-wider uppercase">Business Cashbook</p>
               </div>
             </div>
           </div>
 
-          <nav className="p-4 space-y-1.5">
+          <nav className="flex md:flex-col p-2 md:p-4 space-x-1 md:space-x-0 md:space-y-1.5 overflow-x-auto">
             <button 
               onClick={() => setActiveTab('daybook')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'daybook' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
-              <BookOpen size={16} /> Cashbook
+              <BookOpen size={15} /> <span className="hidden sm:inline">Cashbook</span>
             </button>
 
             <button 
               onClick={() => setActiveTab('parties')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'parties' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
-              <Users size={16} /> Customers & Parties
+              <Users size={15} /> <span className="hidden sm:inline">Customers & Parties</span>
             </button>
 
             <button 
               onClick={() => setActiveTab('reports')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'reports' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
-              <FileSpreadsheet size={16} /> Reports & Exports
+              <FileSpreadsheet size={15} /> <span className="hidden sm:inline">Reports</span>
             </button>
 
             <button 
               onClick={() => setActiveTab('settings')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'settings' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
-              <Settings size={16} /> Store Profile
+              <Settings size={15} /> <span className="hidden sm:inline">Profile</span>
             </button>
           </nav>
         </div>
 
-        <div className="p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-3">
+        <div className="hidden md:block p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-3">
           <div>
             <div className="text-xs font-bold text-white truncate">{businessName}</div>
             <div className="text-[10px] text-slate-400 font-semibold truncate">{user?.email}</div>
@@ -647,9 +647,9 @@ export default function CashLedgerDashboard() {
 
       {/* Main Workspace */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="bg-white border-b border-slate-200/80 px-8 py-5 flex justify-between items-center shadow-sm">
+        <header className="bg-white border-b border-slate-200/80 px-4 md:px-8 py-4 md:py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
           <div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+            <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
               {activeTab === 'daybook' && 'Cashbook Entries'}
               {activeTab === 'parties' && 'Customer & Party Ledger'}
               {activeTab === 'reports' && 'Reports & Statements'}
@@ -658,65 +658,65 @@ export default function CashLedgerDashboard() {
             <p className="text-xs font-semibold text-slate-500 mt-0.5">{businessName}</p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
             <button 
               onClick={() => { setTxnType('CASH_IN'); setShowModal(true); }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md cursor-pointer transition-all"
+              className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
             >
-              <Plus size={16} /> Cash In
+              <Plus size={15} /> Cash In
             </button>
             <button 
               onClick={() => { setTxnType('CASH_OUT'); setShowModal(true); }}
-              className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md cursor-pointer transition-all"
+              className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
             >
-              <Minus size={16} /> Cash Out
+              <Minus size={15} /> Cash Out
             </button>
           </div>
         </header>
 
-        <main className="p-8 flex-1 overflow-y-auto">
+        <main className="p-4 md:p-8 flex-1 overflow-y-auto">
           {activeTab === 'daybook' && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
+                <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
                   <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Cash In</p>
-                    <h3 className="text-3xl font-black text-emerald-600 mt-1">
+                    <h3 className="text-2xl md:text-3xl font-black text-emerald-600 mt-1">
                       Rs. {totalCashIn.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
                   </div>
-                  <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100">
-                    <ArrowDownRight size={26} />
+                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100">
+                    <ArrowDownRight size={22} />
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
                   <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Cash Out</p>
-                    <h3 className="text-3xl font-black text-rose-600 mt-1">
+                    <h3 className="text-2xl md:text-3xl font-black text-rose-600 mt-1">
                       Rs. {totalCashOut.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
                   </div>
-                  <div className="p-3.5 bg-rose-50 text-rose-600 rounded-2xl border border-rose-100">
-                    <ArrowUpRight size={26} />
+                  <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl border border-rose-100">
+                    <ArrowUpRight size={22} />
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
                   <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Net Balance</p>
-                    <h3 className={`text-3xl font-black mt-1 ${netBalance >= 0 ? 'text-sky-600' : 'text-rose-600'}`}>
+                    <h3 className={`text-2xl md:text-3xl font-black mt-1 ${netBalance >= 0 ? 'text-sky-600' : 'text-rose-600'}`}>
                       Rs. {netBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
                   </div>
-                  <div className="p-3.5 bg-sky-50 text-sky-600 rounded-2xl border border-sky-100">
-                    <Wallet size={26} />
+                  <div className="p-3 bg-sky-50 text-sky-600 rounded-2xl border border-sky-100">
+                    <Wallet size={22} />
                   </div>
                 </div>
               </div>
 
               <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50">
+                <div className="px-4 md:px-6 py-4 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
                   <div className="flex items-center gap-3">
                     <h3 className="font-bold text-slate-900 text-sm">Recent Transactions</h3>
                     <span className="text-[11px] bg-slate-200/70 text-slate-700 px-2.5 py-0.5 rounded-full font-extrabold">
@@ -724,94 +724,96 @@ export default function CashLedgerDashboard() {
                     </span>
                   </div>
 
-                  <div className="relative">
-                    <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
+                  <div className="relative w-full sm:w-auto">
+                    <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
                     <input 
                       type="text" 
                       placeholder="Search entries..." 
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9 pr-4 py-1.5 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-semibold w-48 md:w-64 shadow-sm"
+                      className="pl-9 pr-4 py-1.5 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-semibold w-full sm:w-64 shadow-sm"
                     />
                   </div>
                 </div>
 
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-100/70 text-slate-600 text-[10px] uppercase font-black border-b border-slate-200">
-                      <th className="p-4">Date & Time</th>
-                      <th className="p-4">Particulars / Remarks</th>
-                      <th className="p-4">Payment Method</th>
-                      <th className="p-4 text-right">Cash In (Rs.)</th>
-                      <th className="p-4 text-right">Cash Out (Rs.)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-sm font-medium text-slate-800">
-                    {filteredTransactions.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="text-center py-12 text-slate-400 font-medium">
-                          No transactions recorded yet in your account.
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[600px]">
+                    <thead>
+                      <tr className="bg-slate-100/70 text-slate-600 text-[10px] uppercase font-black border-b border-slate-200">
+                        <th className="p-4">Date & Time</th>
+                        <th className="p-4">Particulars / Remarks</th>
+                        <th className="p-4">Payment Method</th>
+                        <th className="p-4 text-right">Cash In (Rs.)</th>
+                        <th className="p-4 text-right">Cash Out (Rs.)</th>
                       </tr>
-                    ) : (
-                      filteredTransactions.map((t) => {
-                        const p = parties.find(party => party.id === t.party_id);
-                        return (
-                          <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="p-4 text-slate-500 text-xs font-mono font-semibold">
-                              {new Date(t.txn_date).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
-                            </td>
-                            <td className="p-4 font-bold text-slate-900">
-                              {p ? (
-                                <span className="inline-flex items-center gap-1.5">
-                                  <span className="text-sky-600 bg-sky-50 px-2 py-0.5 rounded text-xs">{p.name}</span>
-                                  <span>{t.remarks}</span>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-sm font-medium text-slate-800">
+                      {filteredTransactions.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="text-center py-12 text-slate-400 font-medium text-xs">
+                            No transactions recorded yet in your account.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredTransactions.map((t) => {
+                          const p = parties.find(party => party.id === t.party_id);
+                          return (
+                            <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="p-4 text-slate-500 text-xs font-mono font-semibold">
+                                {new Date(t.txn_date).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                              </td>
+                              <td className="p-4 font-bold text-slate-900">
+                                {p ? (
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <span className="text-sky-600 bg-sky-50 px-2 py-0.5 rounded text-xs">{p.name}</span>
+                                    <span>{t.remarks}</span>
+                                  </span>
+                                ) : (t.remarks || 'Cash Transaction')}
+                              </td>
+                              <td className="p-4">
+                                <span className="px-2 py-1 bg-slate-100 border border-slate-200 text-slate-700 rounded-md text-[10px] font-black uppercase tracking-wider">
+                                  {t.payment_mode}
                                 </span>
-                              ) : (t.remarks || 'Cash Transaction')}
-                            </td>
-                            <td className="p-4">
-                              <span className="px-2.5 py-1 bg-slate-100 border border-slate-200/80 text-slate-700 rounded-md text-[10px] font-black uppercase tracking-wider">
-                                {t.payment_mode}
-                              </span>
-                            </td>
-                            <td className="p-4 text-right font-bold text-emerald-600">
-                              {t.txn_type === 'CASH_IN' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
-                            </td>
-                            <td className="p-4 text-right font-bold text-rose-600">
-                              {t.txn_type === 'CASH_OUT' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                              </td>
+                              <td className="p-4 text-right font-bold text-emerald-600">
+                                {t.txn_type === 'CASH_IN' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+                              </td>
+                              <td className="p-4 text-right font-bold text-rose-600">
+                                {t.txn_type === 'CASH_OUT' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </>
           )}
 
           {activeTab === 'parties' && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-4 md:p-6 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">Party Accounts</h3>
+                  <h3 className="text-base md:text-lg font-bold text-slate-900">Party Accounts</h3>
                   <p className="text-xs text-slate-500 font-semibold">Manage customer and vendor ledger accounts</p>
                 </div>
                 <button 
                   onClick={() => setShowAddPartyModal(true)}
-                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center gap-2 shrink-0 self-start sm:self-auto"
+                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <UserPlus size={16} /> Add Party Account
+                  <UserPlus size={15} /> Add Party Account
                 </button>
               </div>
 
               {parties.length === 0 ? (
                 <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-2xl">
-                  <Users size={44} className="mx-auto text-slate-300 mb-3" />
-                  <p className="font-bold text-slate-700 text-base">No Party Accounts Added</p>
+                  <Users size={40} className="mx-auto text-slate-300 mb-3" />
+                  <p className="font-bold text-slate-700 text-sm">No Party Accounts Added</p>
                   <button 
                     onClick={() => setShowAddPartyModal(true)}
-                    className="mt-3 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
+                    className="mt-3 bg-sky-600 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
                   >
                     + Add Party
                   </button>
@@ -819,7 +821,7 @@ export default function CashLedgerDashboard() {
               ) : (
                 <div className="flex flex-col md:flex-row gap-6">
                   {/* Left Column */}
-                  <div className="w-full md:w-80 shrink-0 space-y-3 border-r border-slate-100 pr-0 md:pr-4">
+                  <div className="w-full md:w-80 shrink-0 space-y-3 border-b md:border-b-0 md:border-r border-slate-100 pb-4 md:pb-0 md:pr-4">
                     <div className="relative">
                       <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
                       <input 
@@ -831,7 +833,7 @@ export default function CashLedgerDashboard() {
                       />
                     </div>
 
-                    <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-[300px] md:max-h-[500px] overflow-y-auto pr-1">
                       {filteredParties.length === 0 ? (
                         <p className="text-xs text-slate-400 text-center py-4">No party found matching search.</p>
                       ) : (
@@ -874,28 +876,27 @@ export default function CashLedgerDashboard() {
                   <div className="flex-1 min-w-0">
                     {selectedParty ? (
                       <div className="space-y-4">
-                        <div className="bg-slate-900 text-white p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
-                          <div className="flex items-center gap-3">
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <UserCheck size={18} className="text-sky-400 shrink-0" />
-                                <h3 className="text-lg font-black truncate">{selectedParty.name}</h3>
-                                {/* ICON PDF BUTTON */}
-                                <button 
-                                  onClick={downloadPartyPDF}
-                                  title="Download Party PDF Statement"
-                                  className="ml-2 bg-slate-800 hover:bg-sky-600 text-slate-300 hover:text-white p-2 rounded-xl transition-all cursor-pointer border border-slate-700/80 shadow-sm flex items-center justify-center shrink-0"
-                                >
-                                  <Download size={16} />
-                                </button>
-                              </div>
-                              <p className="text-xs text-slate-400 mt-0.5">{selectedParty.phone ? `+91 ${selectedParty.phone}` : 'No phone details'}</p>
+                        {/* Party Header Banner with PDF Icon */}
+                        <div className="bg-slate-900 text-white p-4 md:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
+                          <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <UserCheck size={18} className="text-sky-400 shrink-0" />
+                              <h3 className="text-base md:text-lg font-black truncate">{selectedParty.name}</h3>
+                              
+                              {/* PARTY PDF ICON BUTTON */}
+                              <button 
+                                onClick={downloadPartyPDF}
+                                title="Download Party Statement PDF"
+                                className="bg-slate-800 hover:bg-sky-600 text-slate-300 hover:text-white p-2 rounded-xl transition-all cursor-pointer border border-slate-700/80 shadow-sm flex items-center justify-center shrink-0"
+                              >
+                                <Download size={15} />
+                              </button>
                             </div>
                           </div>
 
-                          <div className="text-left sm:text-right shrink-0">
+                          <div className="text-left sm:text-right shrink-0 border-t sm:border-t-0 border-slate-800 pt-3 sm:pt-0">
                             <p className="text-[10px] uppercase font-bold text-slate-400">Ledger Balance</p>
-                            <h4 className={`text-xl font-black ${partyBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            <h4 className={`text-lg md:text-xl font-black ${partyBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                               Rs. {Math.abs(partyBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </h4>
                             <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300 inline-block mt-1">
@@ -907,70 +908,72 @@ export default function CashLedgerDashboard() {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
                           <div>
                             <h4 className="font-bold text-xs text-slate-900">Record Entry for {selectedParty.name}</h4>
-                            <p className="text-[10px] text-slate-500">Add transaction directly to {selectedParty.name}'s account</p>
+                            <p className="text-[10px] text-slate-500">Add transaction directly to account</p>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-2 w-full sm:w-auto">
                             <button 
                               onClick={() => { setTxnType('CASH_IN'); setShowModal(true); }}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                              className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all"
                             >
-                              <Plus size={15} /> Received (+ Cash In)
+                              <Plus size={14} /> Received
                             </button>
                             <button 
                               onClick={() => { setTxnType('CASH_OUT'); setShowModal(true); }}
-                              className="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                              className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all"
                             >
-                              <Minus size={15} /> Given (- Cash Out)
+                              <Minus size={14} /> Given
                             </button>
                           </div>
                         </div>
 
                         <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
-                          <table className="w-full text-left border-collapse">
-                            <thead>
-                              <tr className="bg-slate-100 text-slate-600 text-[10px] uppercase font-black border-b border-slate-200">
-                                <th className="p-3">Date</th>
-                                <th className="p-3">Remarks / Particulars</th>
-                                <th className="p-3">Mode</th>
-                                <th className="p-3 text-right">Given (- Out)</th>
-                                <th className="p-3 text-right">Received (+ In)</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 text-xs font-medium">
-                              {partyTransactions.length === 0 ? (
-                                <tr>
-                                  <td colSpan={5} className="text-center py-10 text-slate-400 font-medium">
-                                    No entries recorded for {selectedParty.name} yet. Click <span className="text-emerald-600 font-bold">+ Received</span> or <span className="text-rose-600 font-bold">- Given</span> above.
-                                  </td>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse min-w-[500px]">
+                              <thead>
+                                <tr className="bg-slate-100 text-slate-600 text-[10px] uppercase font-black border-b border-slate-200">
+                                  <th className="p-3">Date</th>
+                                  <th className="p-3">Remarks / Particulars</th>
+                                  <th className="p-3">Mode</th>
+                                  <th className="p-3 text-right">Given (- Out)</th>
+                                  <th className="p-3 text-right">Received (+ In)</th>
                                 </tr>
-                              ) : (
-                                partyTransactions.map((t) => (
-                                  <tr key={t.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className="p-3 text-slate-500 font-mono">
-                                      {new Date(t.txn_date).toLocaleDateString('en-IN')}
-                                    </td>
-                                    <td className="p-3 font-bold text-slate-800">{t.remarks}</td>
-                                    <td className="p-3">
-                                      <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 rounded text-[9px] font-bold">
-                                        {t.payment_mode}
-                                      </span>
-                                    </td>
-                                    <td className="p-3 text-right font-bold text-rose-600">
-                                      {t.txn_type === 'CASH_OUT' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
-                                    </td>
-                                    <td className="p-3 text-right font-bold text-emerald-600">
-                                      {t.txn_type === 'CASH_IN' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                                {partyTransactions.length === 0 ? (
+                                  <tr>
+                                    <td colSpan={5} className="text-center py-10 text-slate-400 font-medium">
+                                      No entries recorded for {selectedParty.name} yet.
                                     </td>
                                   </tr>
-                                ))
-                              )}
-                            </tbody>
-                          </table>
+                                ) : (
+                                  partyTransactions.map((t) => (
+                                    <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                                      <td className="p-3 text-slate-500 font-mono">
+                                        {new Date(t.txn_date).toLocaleDateString('en-IN')}
+                                      </td>
+                                      <td className="p-3 font-bold text-slate-800">{t.remarks}</td>
+                                      <td className="p-3">
+                                        <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 rounded text-[9px] font-bold">
+                                          {t.payment_mode}
+                                        </span>
+                                      </td>
+                                      <td className="p-3 text-right font-bold text-rose-600">
+                                        {t.txn_type === 'CASH_OUT' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+                                      </td>
+                                      <td className="p-3 text-right font-bold text-emerald-600">
+                                        {t.txn_type === 'CASH_IN' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+                                      </td>
+                                    </tr>
+                                  ))
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       </div>
                     ) : (
-                      <div className="text-center py-16 text-slate-400 font-medium border-2 border-dashed border-slate-200 rounded-2xl">
-                        Select a party from the left list to view or add entries.
+                      <div className="text-center py-16 text-slate-400 font-medium border-2 border-dashed border-slate-200 rounded-2xl text-xs">
+                        Select a party from the list to view entries.
                       </div>
                     )}
                   </div>
@@ -980,7 +983,7 @@ export default function CashLedgerDashboard() {
           )}
 
           {activeTab === 'reports' && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-1">Download Account Statements</h3>
               <p className="text-xs text-slate-500 mb-6">Generate and download PDF account reports</p>
 
@@ -991,7 +994,7 @@ export default function CashLedgerDashboard() {
                 
                 <button 
                   onClick={downloadPDF}
-                  className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md transition-all"
+                  className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all w-full sm:w-auto"
                 >
                   <Download size={15} /> Download PDF
                 </button>
@@ -1000,7 +1003,7 @@ export default function CashLedgerDashboard() {
           )}
 
           {activeTab === 'settings' && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm max-w-2xl">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm max-w-2xl">
               <h3 className="text-lg font-bold text-slate-900 mb-1">Store & Business Details</h3>
               <p className="text-xs text-slate-500 mb-6">Enter your business information to appear on PDF statements.</p>
 
@@ -1048,7 +1051,7 @@ export default function CashLedgerDashboard() {
                 <div className="flex justify-between items-center pt-4 border-t border-slate-100">
                   <button 
                     type="submit"
-                    className="bg-slate-950 text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
+                    className="bg-slate-950 text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer w-full sm:w-auto text-center"
                   >
                     Save Changes
                   </button>
@@ -1143,7 +1146,7 @@ export default function CashLedgerDashboard() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Phone Number</label>
+                <load className="block text-[10px] font-black text-slate-600 uppercase mb-1">Phone Number</load>
                 <input 
                   type="text" 
                   value={partyPhone} 
@@ -1155,7 +1158,7 @@ export default function CashLedgerDashboard() {
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                 <button 
                   type="button" 
-                  onClick={() => setShowAddPartyName(false)}
+                  onClick={() => setShowAddPartyModal(false)}
                   className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase cursor-pointer"
                 >
                   Cancel
