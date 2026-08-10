@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Lock, Sparkles, X 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
@@ -12,8 +12,8 @@ import { collection, doc, setDoc, onSnapshot, query, where, getDoc } from 'fireb
 export default function CashLedgerDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isPro, setIsPro] = useState(false); // Subscription Status
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false); // Paywall Modal
+  const [isPro, setIsPro] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const [activeTab, setActiveTab] = useState('daybook');
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -466,6 +466,31 @@ export default function CashLedgerDashboard() {
       margin: { left: 14, right: 14 }
     });
 
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(8.5);
+      doc.setFont('times', 'normal');
+      doc.text('* Computer Generated Statement', 14, 281);
+
+      doc.setFillColor(24, 24, 27);
+      doc.roundedRect(160, 275.5, 8, 8, 2, 2, 'F');
+      
+      doc.setTextColor(244, 244, 245);
+      doc.setFontSize(6);
+      doc.setFont('times', 'bold');
+      doc.text('CL', 161.3, 281);
+
+      doc.setFillColor(34, 197, 94);
+      doc.circle(166, 277.5, 0.7, 'F');
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(10.5);
+      doc.setFont('times', 'bold');
+      doc.text('CashLedger', 170, 281.5);
+    }
+
     doc.save(`${selectedParty.name.replace(/[^a-zA-Z0-9]/g, '_')}_Statement.pdf`);
   };
 
@@ -603,7 +628,7 @@ export default function CashLedgerDashboard() {
                 <Crown size={11} /> PRO
               </span>
             ) : (
-              <button onClick={() => setShowUpgradeModal(true)} className="bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded font-bold text-[9px] hover:bg-sky-500/30">
+              <button onClick={() => setShowUpgradeModal(true)} className="bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded font-bold text-[9px] hover:bg-sky-500/30 cursor-pointer">
                 UPGRADE
               </button>
             )}
@@ -908,7 +933,7 @@ export default function CashLedgerDashboard() {
                                 className="relative bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded-xl transition-all cursor-pointer shadow-sm flex items-center justify-center shrink-0"
                               >
                                 <MessageCircle size={15} />
-                               {!isPro && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border border-slate-900"></span>}
+                                {!isPro && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border border-slate-900"></span>}
                               </button>
 
                               {/* PARTY PDF (PROTECTED) */}
@@ -1129,10 +1154,10 @@ export default function CashLedgerDashboard() {
                 <div className="text-left">
                   <span className="text-[10px] font-black bg-sky-600 text-white px-2 py-0.5 rounded uppercase">Best Value</span>
                   <div className="font-extrabold text-sm text-slate-900 mt-1">Yearly Plan</div>
-                  <div className="text-[11px] text-slate-500">Billed Rs. 699 annually</div>
+                  <div className="text-[11px] text-slate-500">Billed Rs. 599 annually</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-black text-sky-600">Rs. 58<span className="text-xs font-normal text-slate-500">/mo</span></div>
+                  <div className="text-lg font-black text-sky-600">Rs. 49<span className="text-xs font-normal text-slate-500">/mo</span></div>
                 </div>
               </div>
 
@@ -1142,7 +1167,7 @@ export default function CashLedgerDashboard() {
                   <div className="text-[11px] text-slate-500">Cancel anytime</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-black text-slate-900">Rs. 89<span className="text-xs font-normal text-slate-500">/mo</span></div>
+                  <div className="text-lg font-black text-slate-900">Rs. 99<span className="text-xs font-normal text-slate-500">/mo</span></div>
                 </div>
               </div>
             </div>
@@ -1150,8 +1175,6 @@ export default function CashLedgerDashboard() {
             <button 
               onClick={() => {
                 alert("Payment Gateway Integration (Razorpay/UPI) will be triggered here.");
-                // For testing pro feature directly:
-                // setIsPro(true); setShowUpgradeModal(false);
               }}
               className="w-full bg-slate-950 hover:bg-slate-900 text-white font-extrabold py-3.5 rounded-2xl text-xs uppercase tracking-wider shadow-lg cursor-pointer transition-all flex items-center justify-center gap-2"
             >
