@@ -85,7 +85,7 @@ export default function CashLedgerDashboard() {
 
   const netBalance = totalCashIn - totalCashOut;
 
-  // Selected Party Specific Summary
+  // Selected Party Summary
   const partyTransactions = selectedParty 
     ? transactions.filter(t => t.party_id === selectedParty.id)
     : [];
@@ -100,7 +100,7 @@ export default function CashLedgerDashboard() {
 
   const partyBalance = partyCashIn - partyCashOut;
 
-  // Add Transaction Entry
+  // Add Transaction
   const handleAddTransaction = (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || parseFloat(amount) <= 0) return;
@@ -162,7 +162,7 @@ export default function CashLedgerDashboard() {
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
-  // Clear All Entries
+  // Clear Entries
   const handlePurgeData = () => {
     if (confirm('Are you sure you want to clear all transaction records?')) {
       localStorage.removeItem('cl_transactions');
@@ -173,7 +173,7 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // PDF Report Generator
+  // PDF Report Generator with Times New Roman & Perfectly Aligned Bottom-Right Branding
   const downloadPDF = async () => {
     const { default: jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
@@ -188,20 +188,23 @@ export default function CashLedgerDashboard() {
       .substring(0, 2)
       .toUpperCase() || 'CB';
 
+    // Outer Frame Border
     doc.setDrawColor(15, 23, 42);
     doc.setLineWidth(0.8);
     doc.rect(8, 8, 194, 281);
 
+    // Top Header Badge
     doc.setFillColor(24, 24, 27);
     doc.roundedRect(14, 14, 16, 16, 3, 3, 'F');
     doc.setTextColor(244, 244, 245);
     doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('times', 'bold');
     doc.text(badgeText, 17, 24);
 
+    // Store Header Details (Times New Roman)
     doc.setTextColor(15, 23, 42);
     doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('times', 'bold');
     doc.text(businessName.toUpperCase(), 34, 20);
 
     const contactLine = [
@@ -210,57 +213,61 @@ export default function CashLedgerDashboard() {
     ].filter(Boolean).join(' | ');
 
     doc.setTextColor(100, 116, 139);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setFont('times', 'normal');
     doc.text(contactLine || 'Statement Summary', 34, 26);
 
+    // Document Title
     doc.setTextColor(2, 132, 199);
     doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('times', 'bold');
     doc.text('ACCOUNT STATEMENT', 196, 20, { align: 'right' });
 
     doc.setTextColor(100, 116, 139);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setFont('times', 'normal');
     doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 196, 26, { align: 'right' });
 
+    // Header Divider Line
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.5);
     doc.line(14, 34, 196, 34);
 
+    // Metric Summary Cards
     doc.setFillColor(240, 253, 244);
     doc.setDrawColor(187, 247, 208);
     doc.roundedRect(14, 38, 56, 18, 2, 2, 'FD');
     doc.setTextColor(21, 128, 61);
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setFont('times', 'bold');
     doc.text('TOTAL CREDIT', 18, 43);
     doc.setTextColor(22, 163, 74);
-    doc.setFontSize(10);
+    doc.setFontSize(10.5);
     doc.text(`Rs. ${totalCashIn.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 18, 51);
 
     doc.setFillColor(254, 242, 242);
     doc.setDrawColor(254, 202, 202);
     doc.roundedRect(74, 38, 56, 18, 2, 2, 'FD');
     doc.setTextColor(185, 28, 28);
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setFont('times', 'bold');
     doc.text('TOTAL DEBIT', 78, 43);
     doc.setTextColor(220, 38, 38);
-    doc.setFontSize(10);
+    doc.setFontSize(10.5);
     doc.text(`Rs. ${totalCashOut.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 78, 51);
 
     doc.setFillColor(240, 249, 255);
     doc.setDrawColor(186, 230, 253);
     doc.roundedRect(134, 38, 62, 18, 2, 2, 'FD');
     doc.setTextColor(3, 105, 161);
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setFont('times', 'bold');
     doc.text('NET BALANCE', 138, 43);
     doc.setTextColor(2, 132, 199);
-    doc.setFontSize(10);
+    doc.setFontSize(10.5);
     doc.text(`Rs. ${Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })} ${netBalance >= 0 ? 'Cr' : 'Dr'}`, 138, 51);
 
+    // Data Table (Times New Roman Font)
     const tableData = transactions.map((t) => {
       const p = parties.find(party => party.id === t.party_id);
       return [
@@ -277,34 +284,66 @@ export default function CashLedgerDashboard() {
       head: [['DATE', 'PARTICULARS / REMARKS', 'MODE', 'DEBIT (RS.)', 'CREDIT (RS.)']],
       body: tableData.length > 0 ? tableData : [['-', 'No transactions recorded', '-', '-', '-']],
       theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' },
-      bodyStyles: { fontSize: 8, textColor: [51, 65, 85] },
-      columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 80 }, 2: { cellWidth: 22 }, 3: { cellWidth: 27, halign: 'right' }, 4: { cellWidth: 28, halign: 'right' } },
+      styles: {
+        font: 'times',
+        fontSize: 8.5
+      },
+      headStyles: {
+        fillColor: [15, 23, 42],
+        textColor: [255, 255, 255],
+        fontSize: 8.5,
+        fontStyle: 'bold',
+        font: 'times'
+      },
+      bodyStyles: {
+        fontSize: 8.5,
+        textColor: [51, 65, 85],
+        font: 'times'
+      },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 80 },
+        2: { cellWidth: 22 },
+        3: { cellWidth: 27, halign: 'right' },
+        4: { cellWidth: 28, halign: 'right' }
+      },
       margin: { left: 14, right: 14 }
     });
 
+    // Footer - Pixel-Perfect Aligned Logo & Text (Times New Roman)
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
-      doc.setTextColor(100, 116, 139);
-      doc.setFontSize(7);
-      doc.text('* Computer Generated Statement', 14, 282);
-
-      doc.setTextColor(15, 23, 42);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'bold');
-      doc.text('CashLedger', 174, 281, { align: 'right' });
-
-      doc.setFillColor(24, 24, 27);
-      doc.roundedRect(177, 276, 7, 7, 1.5, 1.5, 'F');
       
-      doc.setTextColor(244, 244, 245);
-      doc.setFontSize(5);
-      doc.setFont('helvetica', 'bold');
-      doc.text('CL', 178.2, 281);
+      // Left Note
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(8);
+      doc.setFont('times', 'normal');
+      doc.text('* Computer Generated Statement', 14, 281);
 
+      // Bottom Right Perfectly Aligned Branding Block
+      // Right Margin inside frame = 196mm
+      // Logo Badge: width 7.5mm, height 7.5mm placed at x = 188.5mm, y = 275.2mm
+      // Text "CashLedger": aligned right at x = 186.5mm (2mm padding from badge), baseline y = 280.5mm
+      
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(9.5);
+      doc.setFont('times', 'bold');
+      doc.text('CashLedger', 186.5, 280.5, { align: 'right' });
+
+      // Neon Logo Badge Box
+      doc.setFillColor(24, 24, 27);
+      doc.roundedRect(188.5, 274.8, 7.5, 7.5, 1.8, 1.8, 'F');
+      
+      // Badge Text "CL"
+      doc.setTextColor(244, 244, 245);
+      doc.setFontSize(5.5);
+      doc.setFont('times', 'bold');
+      doc.text('CL', 189.7, 279.8);
+
+      // Green Dot Indicator
       doc.setFillColor(34, 197, 94);
-      doc.circle(182.5, 277.5, 0.6, 'F');
+      doc.circle(194.2, 276.8, 0.6, 'F');
     }
 
     doc.save(`${businessName.replace(/[^a-zA-Z0-9]/g, '_')}_Statement.pdf`);
@@ -883,7 +922,7 @@ export default function CashLedgerDashboard() {
                   required 
                   value={partyName} 
                   onChange={(e) => setPartyName(e.target.value)}
-                  placeholder="e.g. Vishal Medical"
+                  placeholder="e.g. Panwariya Pump"
                   className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
