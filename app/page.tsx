@@ -85,7 +85,7 @@ export default function CashLedgerDashboard() {
 
   const netBalance = totalCashIn - totalCashOut;
 
-  // Selected Party Summary
+  // Selected Party Specific Summary
   const partyTransactions = selectedParty 
     ? transactions.filter(t => t.party_id === selectedParty.id)
     : [];
@@ -162,7 +162,7 @@ export default function CashLedgerDashboard() {
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
-  // Clear Entries
+  // Clear All Entries
   const handlePurgeData = () => {
     if (confirm('Are you sure you want to clear all transaction records?')) {
       localStorage.removeItem('cl_transactions');
@@ -173,7 +173,7 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // PDF Download
+  // PDF Report Generator
   const downloadPDF = async () => {
     const { default: jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
@@ -390,7 +390,7 @@ export default function CashLedgerDashboard() {
       </aside>
 
       {/* Main Workspace */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="bg-white border-b border-slate-200/80 px-8 py-5 flex justify-between items-center shadow-sm">
           <div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">
@@ -536,14 +536,14 @@ export default function CashLedgerDashboard() {
 
           {activeTab === 'parties' && (
             <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
-              <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">Party Accounts</h3>
                   <p className="text-xs text-slate-500 font-semibold">Manage customer and vendor ledger accounts</p>
                 </div>
                 <button 
                   onClick={() => setShowAddPartyModal(true)}
-                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center gap-2"
+                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center gap-2 shrink-0 self-start sm:self-auto"
                 >
                   <UserPlus size={16} /> Add Party Account
                 </button>
@@ -561,14 +561,14 @@ export default function CashLedgerDashboard() {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  {/* Left Column: Search & Party List (4 Columns) */}
-                  <div className="lg:col-span-4 space-y-3 border-r border-slate-100 pr-3">
+                <div className="flex flex-col md:flex-row gap-6">
+                  {/* Left Column: Party Search & List */}
+                  <div className="w-full md:w-80 shrink-0 space-y-3 border-r border-slate-100 pr-0 md:pr-4">
                     <div className="relative">
                       <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
                       <input 
                         type="text" 
-                        placeholder="Search party name or phone..." 
+                        placeholder="Search party..." 
                         value={partySearchTerm}
                         onChange={(e) => setPartySearchTerm(e.target.value)}
                         className="pl-8 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium w-full shadow-sm"
@@ -577,7 +577,7 @@ export default function CashLedgerDashboard() {
 
                     <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
                       {filteredParties.length === 0 ? (
-                        <p className="text-xs text-slate-400 text-center py-4">No party found matching query.</p>
+                        <p className="text-xs text-slate-400 text-center py-4">No party found matching search.</p>
                       ) : (
                         filteredParties.map((p) => {
                           const pTxns = transactions.filter(t => t.party_id === p.id);
@@ -614,11 +614,11 @@ export default function CashLedgerDashboard() {
                     </div>
                   </div>
 
-                  {/* Right Column: Selected Party Particular Workspace (8 Columns) */}
-                  <div className="lg:col-span-8">
+                  {/* Right Column: Selected Particular Party Workspace */}
+                  <div className="flex-1 min-w-0">
                     {selectedParty ? (
                       <div className="space-y-4">
-                        {/* Header Box */}
+                        {/* Party Header Banner */}
                         <div className="bg-slate-900 text-white p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
                           <div>
                             <div className="flex items-center gap-2">
@@ -639,11 +639,11 @@ export default function CashLedgerDashboard() {
                           </div>
                         </div>
 
-                        {/* Direct Entry Buttons Banner */}
+                        {/* Particular Party Entry Buttons */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
                           <div>
                             <h4 className="font-bold text-xs text-slate-900">Record Entry for {selectedParty.name}</h4>
-                            <p className="text-[10px] text-slate-500">Record cash coming in or going out for this party</p>
+                            <p className="text-[10px] text-slate-500">Add transaction directly to {selectedParty.name}'s account</p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <button 
@@ -661,7 +661,7 @@ export default function CashLedgerDashboard() {
                           </div>
                         </div>
 
-                        {/* Particular Party Transactions Table */}
+                        {/* Particular Party History Table */}
                         <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
                           <table className="w-full text-left border-collapse">
                             <thead>
@@ -677,7 +677,7 @@ export default function CashLedgerDashboard() {
                               {partyTransactions.length === 0 ? (
                                 <tr>
                                   <td colSpan={5} className="text-center py-10 text-slate-400 font-medium">
-                                    No entries recorded with {selectedParty.name} yet. Click <span className="text-emerald-600 font-bold">+ Received</span> or <span className="text-rose-600 font-bold">- Given</span> above.
+                                    No entries recorded for {selectedParty.name} yet. Click <span className="text-emerald-600 font-bold">+ Received</span> or <span className="text-rose-600 font-bold">- Given</span> above.
                                   </td>
                                 </tr>
                               ) : (
@@ -883,7 +883,7 @@ export default function CashLedgerDashboard() {
                   required 
                   value={partyName} 
                   onChange={(e) => setPartyName(e.target.value)}
-                  placeholder="e.g. Panwariya Pump"
+                  placeholder="e.g. Vishal Medical"
                   className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
