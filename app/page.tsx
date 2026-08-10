@@ -1,30 +1,19 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { 
-  ArrowDownRight, 
-  ArrowUpRight, 
-  Wallet, 
-  Plus, 
-  Minus, 
-  BookOpen, 
-  Users, 
-  FileSpreadsheet, 
-  Settings, 
-  Search,
-  Download,
-  FileText,
-  CheckCircle2,
-  UserPlus,
-  UserCheck,
-  LogOut
+  ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
+  Users, FileSpreadsheet, Settings, Search, Download, FileText, 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Lock, Sparkles, X 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { collection, doc, setDoc, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, setDoc, onSnapshot, query, where, getDoc } from 'firebase/firestore';
 
 export default function CashLedgerDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isPro, setIsPro] = useState(false); // Subscription Status
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false); // Paywall Modal
 
   const [activeTab, setActiveTab] = useState('daybook');
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -52,10 +41,16 @@ export default function CashLedgerDashboard() {
   const [address, setAddress] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // 1. Auth Listener
+  // 1. Auth Listener & Pro Check
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        const userDoc = await getDoc(doc(db, 'profiles', currentUser.uid));
+        if (userDoc.exists()) {
+          setIsPro(userDoc.data().isPro || false);
+        }
+      }
       setLoading(false);
     });
     return () => unsubscribe();
@@ -93,6 +88,7 @@ export default function CashLedgerDashboard() {
         setPhone(p.phone || '');
         setEmail(p.email || user.email || '');
         setAddress(p.address || '');
+        setIsPro(p.isPro || false);
       } else {
         setBusinessName(user.displayName || 'My Business');
         setEmail(user.email || '');
@@ -111,7 +107,6 @@ export default function CashLedgerDashboard() {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error("Login failed:", error);
-      alert("Login failed. Please check internet connection.");
     }
   };
 
@@ -120,6 +115,15 @@ export default function CashLedgerDashboard() {
       await signOut(auth);
     } catch (error) {
       console.error("Logout failed:", error);
+    }
+  };
+
+  // PRO WRAPPER CHECK
+  const handleProAction = (action: () => void) => {
+    if (isPro) {
+      action();
+    } else {
+      setShowUpgradeModal(true);
     }
   };
 
@@ -204,8 +208,9 @@ export default function CashLedgerDashboard() {
         businessName,
         phone,
         email: user.email,
-        address
-      });
+        address,
+        isPro
+      }, { merge: true });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (e) {
@@ -213,21 +218,33 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // FULL CASHBOOK STATEMENT PDF
-  const downloadPDF = async () => {
+  // WHATSAPP REMINDER
+  const executeWhatsAppReminder = () => {
+    if (!selectedParty) return;
+    const cleanPhone = selectedParty.phone ? selectedParty.phone.replace(/[^0-9]/g, '') : '';
+    const absBal = Math.abs(partyBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    const statusText = partyBalance >= 0 ? 'You Get (Pending)' : 'You Give';
+    
+    const message = encodeURIComponent(
+      `Hello *${selectedParty.name}*,\n\nThis is a friendly reminder from *${businessName}* regarding your ledger account balance.\n\n*Pending Amount:* Rs. ${absBal} (${statusText})\n\nKindly clear dues at your earliest convenience.\n\nThank you!`
+    );
+
+    const whatsappUrl = cleanPhone 
+      ? `https://wa.me/91${cleanPhone}?text=${message}`
+      : `https://wa.me/?text=${message}`;
+
+    window.open(whatsappUrl, '_blank');
+  };
+
+  // FULL STATEMENT PDF
+  const executeDownloadPDF = async () => {
     const { default: jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
 
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     doc.setFont('times', 'normal');
 
-    const badgeText = businessName
-      .trim()
-      .split(' ')
-      .map(w => w[0])
-      .join('')
-      .substring(0, 2)
-      .toUpperCase() || 'CB';
+    const badgeText = businessName.trim().split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() || 'CB';
 
     doc.setDrawColor(15, 23, 42);
     doc.setLineWidth(0.8);
@@ -325,36 +342,11 @@ export default function CashLedgerDashboard() {
       margin: { left: 14, right: 14 }
     });
 
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setTextColor(100, 116, 139);
-      doc.setFontSize(8.5);
-      doc.setFont('times', 'normal');
-      doc.text('* Computer Generated Statement', 14, 281);
-
-      doc.setFillColor(24, 24, 27);
-      doc.roundedRect(160, 275.5, 8, 8, 2, 2, 'F');
-      
-      doc.setTextColor(244, 244, 245);
-      doc.setFontSize(6);
-      doc.setFont('times', 'bold');
-      doc.text('CL', 161.3, 281);
-
-      doc.setFillColor(34, 197, 94);
-      doc.circle(166, 277.5, 0.7, 'F');
-
-      doc.setTextColor(15, 23, 42);
-      doc.setFontSize(10.5);
-      doc.setFont('times', 'bold');
-      doc.text('CashLedger', 170, 281.5);
-    }
-
     doc.save(`${businessName.replace(/[^a-zA-Z0-9]/g, '_')}_Statement.pdf`);
   };
 
   // INDIVIDUAL PARTY PDF
-  const downloadPartyPDF = async () => {
+  const executeDownloadPartyPDF = async () => {
     if (!selectedParty) return;
 
     const { default: jsPDF } = await import('jspdf');
@@ -363,13 +355,7 @@ export default function CashLedgerDashboard() {
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     doc.setFont('times', 'normal');
 
-    const badgeText = businessName
-      .trim()
-      .split(' ')
-      .map(w => w[0])
-      .join('')
-      .substring(0, 2)
-      .toUpperCase() || 'CB';
+    const badgeText = businessName.trim().split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() || 'CB';
 
     doc.setDrawColor(15, 23, 42);
     doc.setLineWidth(0.8);
@@ -480,31 +466,6 @@ export default function CashLedgerDashboard() {
       margin: { left: 14, right: 14 }
     });
 
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setTextColor(100, 116, 139);
-      doc.setFontSize(8.5);
-      doc.setFont('times', 'normal');
-      doc.text('* Computer Generated Statement', 14, 281);
-
-      doc.setFillColor(24, 24, 27);
-      doc.roundedRect(160, 275.5, 8, 8, 2, 2, 'F');
-      
-      doc.setTextColor(244, 244, 245);
-      doc.setFontSize(6);
-      doc.setFont('times', 'bold');
-      doc.text('CL', 161.3, 281);
-
-      doc.setFillColor(34, 197, 94);
-      doc.circle(166, 277.5, 0.7, 'F');
-
-      doc.setTextColor(15, 23, 42);
-      doc.setFontSize(10.5);
-      doc.setFont('times', 'bold');
-      doc.text('CashLedger', 170, 281.5);
-    }
-
     doc.save(`${selectedParty.name.replace(/[^a-zA-Z0-9]/g, '_')}_Statement.pdf`);
   };
 
@@ -572,20 +533,22 @@ export default function CashLedgerDashboard() {
         [data-nextjs-toast], [data-nextjs-dialog-overlay], #nextjs-dev-indicator { display: none !important; }
       `}</style>
 
-      {/* Responsive Sidebar: Hidden on Mobile, Visible on Desktop */}
+      {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 bg-slate-950 text-white flex-col justify-between border-r border-slate-800 shrink-0">
         <div>
           <div className="p-6 border-b border-slate-800/80">
-            <div className="flex items-center gap-3">
-              <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="shadow-md shrink-0">
-                <rect width="100" height="100" rx="26" fill="#18181B"/>
-                <rect x="10" y="10" width="80" height="80" rx="20" stroke="#27272A" strokeWidth="2"/>
-                <text x="46" y="63" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="44" fill="#F4F4F5" textAnchor="middle" letterSpacing="-3">CL</text>
-                <circle cx="74" cy="28" r="5" fill="#22C55E"/>
-              </svg>
-              <div>
-                <h1 className="text-lg font-black tracking-tight text-white uppercase">CashLedger</h1>
-                <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Business Cashbook</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="shadow-md shrink-0">
+                  <rect width="100" height="100" rx="26" fill="#18181B"/>
+                  <rect x="10" y="10" width="80" height="80" rx="20" stroke="#27272A" strokeWidth="2"/>
+                  <text x="46" y="63" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="44" fill="#F4F4F5" textAnchor="middle" letterSpacing="-3">CL</text>
+                  <circle cx="74" cy="28" r="5" fill="#22C55E"/>
+                </svg>
+                <div>
+                  <h1 className="text-lg font-black tracking-tight text-white uppercase">CashLedger</h1>
+                  <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Business Cashbook</p>
+                </div>
               </div>
             </div>
           </div>
@@ -630,9 +593,20 @@ export default function CashLedgerDashboard() {
         </div>
 
         <div className="p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-3">
-          <div>
-            <div className="text-xs font-bold text-white truncate">{businessName}</div>
-            <div className="text-[10px] text-slate-400 font-semibold truncate">{user?.email}</div>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs font-bold text-white truncate">{businessName}</div>
+              <div className="text-[10px] text-slate-400 font-semibold truncate">{user?.email}</div>
+            </div>
+            {isPro ? (
+              <span className="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-black text-[9px] flex items-center gap-1 border border-amber-500/30">
+                <Crown size={11} /> PRO
+              </span>
+            ) : (
+              <button onClick={() => setShowUpgradeModal(true)} className="bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded font-bold text-[9px] hover:bg-sky-500/30">
+                UPGRADE
+              </button>
+            )}
           </div>
 
           <button 
@@ -644,7 +618,7 @@ export default function CashLedgerDashboard() {
         </div>
       </aside>
 
-      {/* Mobile Bottom Navigation Bar (App Like Experience) */}
+      {/* Mobile Bottom Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-950 text-white flex justify-around items-center border-t border-slate-800 p-2 shadow-2xl">
         <button 
           onClick={() => setActiveTab('daybook')}
@@ -683,17 +657,24 @@ export default function CashLedgerDashboard() {
         </button>
       </nav>
 
-      {/* Main Workspace (With bottom padding on mobile so content isn't hidden behind the bottom bar) */}
+      {/* Main Workspace */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden pb-20 md:pb-0">
         <header className="bg-white border-b border-slate-200/80 px-4 md:px-8 py-4 md:py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
           <div>
-            <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
-              {activeTab === 'daybook' && 'Cashbook Entries'}
-              {activeTab === 'parties' && 'Customer & Party Ledger'}
-              {activeTab === 'reports' && 'Reports & Statements'}
-              {activeTab === 'settings' && 'Store Profile'}
-            </h2>
-            <p className="text-xs font-semibold text-slate-500 mt-0.5">{businessName}</p>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
+                {activeTab === 'daybook' && 'Cashbook Entries'}
+                {activeTab === 'parties' && 'Customer & Party Ledger'}
+                {activeTab === 'reports' && 'Reports & Statements'}
+                {activeTab === 'settings' && 'Store Profile'}
+              </h2>
+              {isPro && (
+                <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-black text-[10px] flex items-center gap-1 border border-amber-200">
+                  <Crown size={12} /> PRO ACTIVE
+                </span>
+              )}
+            </div>
+            <p className="text-xs font-semibold text-slate-500 mt-0.5 truncate max-w-[250px] sm:max-w-none">{businessName}</p>
           </div>
 
           <div className="flex items-center gap-2.5 w-full sm:w-auto">
@@ -915,17 +896,29 @@ export default function CashLedgerDashboard() {
                     {selectedParty ? (
                       <div className="space-y-4">
                         <div className="bg-slate-900 text-white p-4 md:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
-                          <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
-                            <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="flex items-center justify-between sm:justify-start gap-2.5 w-full sm:w-auto">
+                            <div className="flex items-center gap-2 min-w-0">
                               <UserCheck size={18} className="text-sky-400 shrink-0" />
                               <h3 className="text-base md:text-lg font-black truncate">{selectedParty.name}</h3>
                               
+                              {/* WHATSAPP REMINDER (PROTECTED) */}
                               <button 
-                                onClick={downloadPartyPDF}
-                                title="Download Party Statement PDF"
-                                className="bg-slate-800 hover:bg-sky-600 text-slate-300 hover:text-white p-2 rounded-xl transition-all cursor-pointer border border-slate-700/80 shadow-sm flex items-center justify-center shrink-0"
+                                onClick={() => handleProAction(executeWhatsAppReminder)}
+                                title="Send WhatsApp Payment Reminder (PRO)"
+                                className="relative bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded-xl transition-all cursor-pointer shadow-sm flex items-center justify-center shrink-0"
+                              >
+                                <MessageCircle size={15} />
+                               {!isPro && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border border-slate-900"></span>}
+                              </button>
+
+                              {/* PARTY PDF (PROTECTED) */}
+                              <button 
+                                onClick={() => handleProAction(executeDownloadPartyPDF)}
+                                title="Download Party Statement PDF (PRO)"
+                                className="relative bg-slate-800 hover:bg-sky-600 text-slate-300 hover:text-white p-2 rounded-xl transition-all cursor-pointer border border-slate-700/80 shadow-sm flex items-center justify-center shrink-0"
                               >
                                 <Download size={15} />
+                                {!isPro && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border border-slate-900"></span>}
                               </button>
                             </div>
                           </div>
@@ -1023,13 +1016,18 @@ export default function CashLedgerDashboard() {
               <h3 className="text-lg font-bold text-slate-900 mb-1">Download Account Statements</h3>
               <p className="text-xs text-slate-500 mb-6">Generate and download PDF account reports</p>
 
-              <div className="p-6 border border-slate-200/80 rounded-2xl hover:border-sky-500 transition-all bg-slate-50/30 max-w-md">
+              <div className="p-6 border border-slate-200/80 rounded-2xl hover:border-sky-500 transition-all bg-slate-50/30 max-w-md relative">
+                {!isPro && (
+                  <span className="absolute top-4 right-4 bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-extrabold flex items-center gap-1">
+                    <Crown size={12} /> PRO FEATURE
+                  </span>
+                )}
                 <FileText size={32} className="text-sky-600 mb-3" />
                 <h4 className="font-bold text-slate-900 text-base">PDF Account Statement</h4>
                 <p className="text-xs text-slate-500 mt-1 mb-5">Printable A4 PDF statement</p>
                 
                 <button 
-                  onClick={downloadPDF}
+                  onClick={() => handleProAction(executeDownloadPDF)}
                   className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all w-full sm:w-auto"
                 >
                   <Download size={15} /> Download PDF
@@ -1040,8 +1038,16 @@ export default function CashLedgerDashboard() {
 
           {activeTab === 'settings' && (
             <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm max-w-2xl">
-              <h3 className="text-lg font-bold text-slate-900 mb-1">Store & Business Details</h3>
-              <p className="text-xs text-slate-500 mb-6">Enter your business information to appear on PDF statements.</p>
+              <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Store & Subscription</h3>
+                  <p className="text-xs text-slate-500">Manage your business profile and plan</p>
+                </div>
+                <div className="bg-slate-100 px-3 py-1.5 rounded-xl flex items-center gap-2">
+                  <Crown size={15} className={isPro ? "text-amber-500" : "text-slate-400"} />
+                  <span className="text-xs font-bold text-slate-700">{isPro ? "PRO Plan Active" : "Free Plan"}</span>
+                </div>
+              </div>
 
               {saveSuccess && (
                 <div className="mb-4 p-3 bg-emerald-50 text-emerald-800 rounded-xl font-bold text-xs flex items-center gap-2">
@@ -1097,6 +1103,65 @@ export default function CashLedgerDashboard() {
           )}
         </main>
       </div>
+
+      {/* UPGRADE PAYWALL MODAL (FREEMIUM POPUP) */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 text-center relative overflow-hidden space-y-6">
+            <button 
+              onClick={() => setShowUpgradeModal(false)}
+              className="absolute top-4 right-4 bg-slate-100 hover:bg-slate-200 p-2 rounded-full text-slate-500 cursor-pointer transition-all"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="w-14 h-14 bg-amber-500/10 text-amber-500 rounded-2xl mx-auto flex items-center justify-center border border-amber-500/20">
+              <Crown size={28} />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">Unlock CashLedger PRO</h3>
+              <p className="text-xs text-slate-500 font-medium">Get unlimited PDF statements, party reports & WhatsApp reminders.</p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-4 rounded-2xl border-2 border-sky-500 bg-sky-50/50 flex justify-between items-center cursor-pointer">
+                <div className="text-left">
+                  <span className="text-[10px] font-black bg-sky-600 text-white px-2 py-0.5 rounded uppercase">Best Value</span>
+                  <div className="font-extrabold text-sm text-slate-900 mt-1">Yearly Plan</div>
+                  <div className="text-[11px] text-slate-500">Billed Rs. 699 annually</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-black text-sky-600">Rs. 58<span className="text-xs font-normal text-slate-500">/mo</span></div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl border border-slate-200 hover:border-slate-300 bg-white flex justify-between items-center cursor-pointer">
+                <div className="text-left">
+                  <div className="font-extrabold text-sm text-slate-900">Monthly Plan</div>
+                  <div className="text-[11px] text-slate-500">Cancel anytime</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-black text-slate-900">Rs. 89<span className="text-xs font-normal text-slate-500">/mo</span></div>
+                </div>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => {
+                alert("Payment Gateway Integration (Razorpay/UPI) will be triggered here.");
+                // For testing pro feature directly:
+                // setIsPro(true); setShowUpgradeModal(false);
+              }}
+              className="w-full bg-slate-950 hover:bg-slate-900 text-white font-extrabold py-3.5 rounded-2xl text-xs uppercase tracking-wider shadow-lg cursor-pointer transition-all flex items-center justify-center gap-2"
+            >
+              <Sparkles size={16} className="text-amber-400" /> Upgrade Now
+            </button>
+
+            <p className="text-[10px] text-slate-400 font-medium">Secure payments powered by UPI & Cards.</p>
+          </div>
+        </div>
+      )}
 
       {/* Add Transaction Modal */}
       {showModal && (
