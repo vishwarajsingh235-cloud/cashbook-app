@@ -173,12 +173,19 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // PDF Report Generator with Times New Roman & Perfectly Aligned Bottom-Right Branding
+  // PDF Generator: Forced Times New Roman + Logo before CashLedger text
   const downloadPDF = async () => {
     const { default: jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
 
-    const doc = new jsPDF('p', 'mm', 'a4');
+    const doc = new jsPDF({
+      orientation: 'p',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    // Explicitly set default Times font
+    doc.setFont('times', 'normal');
 
     const badgeText = businessName
       .trim()
@@ -188,12 +195,12 @@ export default function CashLedgerDashboard() {
       .substring(0, 2)
       .toUpperCase() || 'CB';
 
-    // Outer Frame Border
+    // 1. Outer Frame Border
     doc.setDrawColor(15, 23, 42);
     doc.setLineWidth(0.8);
     doc.rect(8, 8, 194, 281);
 
-    // Top Header Badge
+    // 2. Top Header Logo Badge
     doc.setFillColor(24, 24, 27);
     doc.roundedRect(14, 14, 16, 16, 3, 3, 'F');
     doc.setTextColor(244, 244, 245);
@@ -201,9 +208,9 @@ export default function CashLedgerDashboard() {
     doc.setFont('times', 'bold');
     doc.text(badgeText, 17, 24);
 
-    // Store Header Details (Times New Roman)
+    // 3. Store Header Details (Times New Roman Bold)
     doc.setTextColor(15, 23, 42);
-    doc.setFontSize(13);
+    doc.setFontSize(14);
     doc.setFont('times', 'bold');
     doc.text(businessName.toUpperCase(), 34, 20);
 
@@ -213,61 +220,61 @@ export default function CashLedgerDashboard() {
     ].filter(Boolean).join(' | ');
 
     doc.setTextColor(100, 116, 139);
-    doc.setFontSize(8.5);
+    doc.setFontSize(9);
     doc.setFont('times', 'normal');
     doc.text(contactLine || 'Statement Summary', 34, 26);
 
-    // Document Title
+    // 4. Document Title
     doc.setTextColor(2, 132, 199);
-    doc.setFontSize(12);
+    doc.setFontSize(13);
     doc.setFont('times', 'bold');
     doc.text('ACCOUNT STATEMENT', 196, 20, { align: 'right' });
 
     doc.setTextColor(100, 116, 139);
-    doc.setFontSize(8.5);
+    doc.setFontSize(9);
     doc.setFont('times', 'normal');
     doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 196, 26, { align: 'right' });
 
-    // Header Divider Line
+    // Divider Line
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.5);
     doc.line(14, 34, 196, 34);
 
-    // Metric Summary Cards
+    // 5. Metric Cards
     doc.setFillColor(240, 253, 244);
     doc.setDrawColor(187, 247, 208);
     doc.roundedRect(14, 38, 56, 18, 2, 2, 'FD');
     doc.setTextColor(21, 128, 61);
-    doc.setFontSize(7.5);
+    doc.setFontSize(8);
     doc.setFont('times', 'bold');
     doc.text('TOTAL CREDIT', 18, 43);
     doc.setTextColor(22, 163, 74);
-    doc.setFontSize(10.5);
+    doc.setFontSize(11);
     doc.text(`Rs. ${totalCashIn.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 18, 51);
 
     doc.setFillColor(254, 242, 242);
     doc.setDrawColor(254, 202, 202);
     doc.roundedRect(74, 38, 56, 18, 2, 2, 'FD');
     doc.setTextColor(185, 28, 28);
-    doc.setFontSize(7.5);
+    doc.setFontSize(8);
     doc.setFont('times', 'bold');
     doc.text('TOTAL DEBIT', 78, 43);
     doc.setTextColor(220, 38, 38);
-    doc.setFontSize(10.5);
+    doc.setFontSize(11);
     doc.text(`Rs. ${totalCashOut.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 78, 51);
 
     doc.setFillColor(240, 249, 255);
     doc.setDrawColor(186, 230, 253);
     doc.roundedRect(134, 38, 62, 18, 2, 2, 'FD');
     doc.setTextColor(3, 105, 161);
-    doc.setFontSize(7.5);
+    doc.setFontSize(8);
     doc.setFont('times', 'bold');
     doc.text('NET BALANCE', 138, 43);
     doc.setTextColor(2, 132, 199);
-    doc.setFontSize(10.5);
+    doc.setFontSize(11);
     doc.text(`Rs. ${Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })} ${netBalance >= 0 ? 'Cr' : 'Dr'}`, 138, 51);
 
-    // Data Table (Times New Roman Font)
+    // 6. Data Table in Times New Roman Font
     const tableData = transactions.map((t) => {
       const p = parties.find(party => party.id === t.party_id);
       return [
@@ -286,17 +293,17 @@ export default function CashLedgerDashboard() {
       theme: 'grid',
       styles: {
         font: 'times',
-        fontSize: 8.5
+        fontSize: 9
       },
       headStyles: {
         fillColor: [15, 23, 42],
         textColor: [255, 255, 255],
-        fontSize: 8.5,
+        fontSize: 9,
         fontStyle: 'bold',
         font: 'times'
       },
       bodyStyles: {
-        fontSize: 8.5,
+        fontSize: 9,
         textColor: [51, 65, 85],
         font: 'times'
       },
@@ -310,40 +317,37 @@ export default function CashLedgerDashboard() {
       margin: { left: 14, right: 14 }
     });
 
-    // Footer - Pixel-Perfect Aligned Logo & Text (Times New Roman)
+    // 7. Footer: [LOGO BADGE] -> "CashLedger" (Exact Bottom Right Alignment)
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       
-      // Left Note
+      // Bottom Left Note
       doc.setTextColor(100, 116, 139);
-      doc.setFontSize(8);
+      doc.setFontSize(8.5);
       doc.setFont('times', 'normal');
       doc.text('* Computer Generated Statement', 14, 281);
 
-      // Bottom Right Perfectly Aligned Branding Block
-      // Right Margin inside frame = 196mm
-      // Logo Badge: width 7.5mm, height 7.5mm placed at x = 188.5mm, y = 275.2mm
-      // Text "CashLedger": aligned right at x = 186.5mm (2mm padding from badge), baseline y = 280.5mm
-      
-      doc.setTextColor(15, 23, 42);
-      doc.setFontSize(9.5);
-      doc.setFont('times', 'bold');
-      doc.text('CashLedger', 186.5, 280.5, { align: 'right' });
-
-      // Neon Logo Badge Box
+      // Bottom Right: LOGO BADGE FIRST, THEN TEXT "CashLedger"
+      // Logo Badge Box at x = 160mm, y = 275.5mm
       doc.setFillColor(24, 24, 27);
-      doc.roundedRect(188.5, 274.8, 7.5, 7.5, 1.8, 1.8, 'F');
+      doc.roundedRect(160, 275.5, 8, 8, 2, 2, 'F');
       
-      // Badge Text "CL"
+      // "CL" inside logo badge
       doc.setTextColor(244, 244, 245);
-      doc.setFontSize(5.5);
+      doc.setFontSize(6);
       doc.setFont('times', 'bold');
-      doc.text('CL', 189.7, 279.8);
+      doc.text('CL', 161.3, 281);
 
-      // Green Dot Indicator
+      // Neon Green Indicator Dot on Logo
       doc.setFillColor(34, 197, 94);
-      doc.circle(194.2, 276.8, 0.6, 'F');
+      doc.circle(166, 277.5, 0.7, 'F');
+
+      // "CashLedger" Text RIGHT AFTER LOGO BADGE (x = 170mm)
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(10.5);
+      doc.setFont('times', 'bold');
+      doc.text('CashLedger', 170, 281.5);
     }
 
     doc.save(`${businessName.replace(/[^a-zA-Z0-9]/g, '_')}_Statement.pdf`);
