@@ -20,7 +20,7 @@ import {
   LogOut,
   LogIn
 } from 'lucide-react';
-import { auth, googleProvider, db } from '../lib/firebase';
+import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, setDoc, onSnapshot, query, where, deleteDoc } from 'firebase/firestore';
 
