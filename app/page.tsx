@@ -17,12 +17,11 @@ import {
   UserPlus,
   Trash2,
   UserCheck,
-  LogOut,
-  LogIn
+  LogOut
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { collection, doc, setDoc, onSnapshot, query, where, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, onSnapshot, query, where } from 'firebase/firestore';
 
 export default function CashLedgerDashboard() {
   const [user, setUser] = useState<User | null>(null);
@@ -63,7 +62,7 @@ export default function CashLedgerDashboard() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Fetch User Specific Cloud Data from Firestore
+  // 2. Fetch User Data
   useEffect(() => {
     if (!user) {
       setTransactions([]);
@@ -72,7 +71,6 @@ export default function CashLedgerDashboard() {
       return;
     }
 
-    // Realtime Transactions Sync for Logged-In User
     const qTxns = query(collection(db, 'transactions'), where('userId', '==', user.uid));
     const unsubTxns = onSnapshot(qTxns, (snapshot) => {
       const txnsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -80,7 +78,6 @@ export default function CashLedgerDashboard() {
       setTransactions(txnsData);
     });
 
-    // Realtime Parties Sync for Logged-In User
     const qParties = query(collection(db, 'parties'), where('userId', '==', user.uid));
     const unsubParties = onSnapshot(qParties, (snapshot) => {
       const partiesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -90,7 +87,6 @@ export default function CashLedgerDashboard() {
       }
     });
 
-    // Load Profile
     const unsubProfile = onSnapshot(doc(db, 'profiles', user.uid), (docSnap) => {
       if (docSnap.exists()) {
         const p = docSnap.data();
@@ -111,13 +107,12 @@ export default function CashLedgerDashboard() {
     };
   }, [user]);
 
-  // Google Login & Logout Handlers
   const handleGoogleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
       console.error("Login failed:", error);
-      alert("Login failed. Please try again.");
+      alert("Login failed. Check internet connection.");
     }
   };
 
@@ -129,7 +124,6 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // Summary Calculations
   const totalCashIn = transactions
     .filter(t => t.txn_type === 'CASH_IN')
     .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
@@ -140,7 +134,6 @@ export default function CashLedgerDashboard() {
 
   const netBalance = totalCashIn - totalCashOut;
 
-  // Selected Party Summary
   const partyTransactions = selectedParty 
     ? transactions.filter(t => t.party_id === selectedParty.id)
     : [];
@@ -155,7 +148,6 @@ export default function CashLedgerDashboard() {
 
   const partyBalance = partyCashIn - partyCashOut;
 
-  // Add Transaction Entry to Firestore
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !amount || parseFloat(amount) <= 0) return;
@@ -176,11 +168,10 @@ export default function CashLedgerDashboard() {
       setAmount('');
       setRemarks('');
     } catch (err) {
-      alert('Failed to save entry in cloud.');
+      alert('Failed to save entry.');
     }
   };
 
-  // Add Party to Firestore
   const handleAddParty = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !partyName) return;
@@ -204,7 +195,6 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // Save Profile to Firestore
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -224,7 +214,6 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // PDF Report Generator
   const downloadPDF = async () => {
     const { default: jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
@@ -382,7 +371,7 @@ export default function CashLedgerDashboard() {
     );
   }
 
-  // LOGIN SCREEN (If user is not logged in)
+  // GOOGLE LOGIN SCREEN
   if (!user) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4">
@@ -423,7 +412,6 @@ export default function CashLedgerDashboard() {
     );
   }
 
-  // DASHBOARD MAIN VIEW
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
       <style jsx global>{`
@@ -490,7 +478,7 @@ export default function CashLedgerDashboard() {
         <div className="p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-3">
           <div>
             <div className="text-xs font-bold text-white truncate">{businessName}</div>
-            <div className="text-[10px] text-slate-400 font-semibold truncate">{user.email}</div>
+            <div className="text-[10px] text-slate-400 font-semibold truncate">{user?.email}</div>
           </div>
 
           <button 
@@ -607,7 +595,7 @@ export default function CashLedgerDashboard() {
                     {filteredTransactions.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="text-center py-12 text-slate-400 font-medium">
-                          No transactions recorded yet in your cloud account.
+                          No transactions recorded yet in your account.
                         </td>
                       </tr>
                     ) : (
@@ -675,7 +663,7 @@ export default function CashLedgerDashboard() {
                 </div>
               ) : (
                 <div className="flex flex-col md:flex-row gap-6">
-                  {/* Left Column: Party Search & List */}
+                  {/* Left Column */}
                   <div className="w-full md:w-80 shrink-0 space-y-3 border-r border-slate-100 pr-0 md:pr-4">
                     <div className="relative">
                       <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
@@ -727,11 +715,10 @@ export default function CashLedgerDashboard() {
                     </div>
                   </div>
 
-                  {/* Right Column: Selected Particular Party Workspace */}
+                  {/* Right Column */}
                   <div className="flex-1 min-w-0">
                     {selectedParty ? (
                       <div className="space-y-4">
-                        {/* Party Header Banner */}
                         <div className="bg-slate-900 text-white p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
                           <div>
                             <div className="flex items-center gap-2">
@@ -752,7 +739,6 @@ export default function CashLedgerDashboard() {
                           </div>
                         </div>
 
-                        {/* Particular Party Entry Buttons */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
                           <div>
                             <h4 className="font-bold text-xs text-slate-900">Record Entry for {selectedParty.name}</h4>
@@ -774,7 +760,6 @@ export default function CashLedgerDashboard() {
                           </div>
                         </div>
 
-                        {/* Particular Party History Table */}
                         <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
                           <table className="w-full text-left border-collapse">
                             <thead>
