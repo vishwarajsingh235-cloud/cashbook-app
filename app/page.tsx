@@ -354,7 +354,7 @@ export default function CashLedgerDashboard() {
     doc.save(`${businessName.replace(/[^a-zA-Z0-9]/g, '_')}_Statement.pdf`);
   };
 
-  // INDIVIDUAL PARTY STATEMENT PDF
+  // INDIVIDUAL PARTY ICON-TYPE PDF
   const downloadPartyPDF = async () => {
     if (!selectedParty) return;
 
@@ -412,7 +412,6 @@ export default function CashLedgerDashboard() {
     doc.setLineWidth(0.5);
     doc.line(14, 34, 196, 34);
 
-    // Party Details Box
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(226, 232, 240);
     doc.roundedRect(14, 38, 182, 14, 2, 2, 'FD');
@@ -429,7 +428,6 @@ export default function CashLedgerDashboard() {
       doc.text(`Phone: +91 ${selectedParty.phone}`, 120, 46);
     }
 
-    // Party Balance Boxes
     doc.setFillColor(240, 253, 244);
     doc.setDrawColor(187, 247, 208);
     doc.roundedRect(14, 56, 56, 18, 2, 2, 'FD');
@@ -533,7 +531,6 @@ export default function CashLedgerDashboard() {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col justify-center items-center p-4 font-sans antialiased">
         <div className="bg-white border border-slate-200/80 rounded-2xl p-8 max-w-sm w-full shadow-sm text-center space-y-6">
-          
           <div className="flex justify-center items-center gap-2.5">
             <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
               <rect width="100" height="100" rx="26" fill="#18181B"/>
@@ -565,7 +562,6 @@ export default function CashLedgerDashboard() {
           <div className="pt-2 border-t border-slate-100">
             <p className="text-[11px] text-slate-400 font-medium">By continuing, your data syncs securely with your account.</p>
           </div>
-
         </div>
       </div>
     );
@@ -879,32 +875,32 @@ export default function CashLedgerDashboard() {
                     {selectedParty ? (
                       <div className="space-y-4">
                         <div className="bg-slate-900 text-white p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <UserCheck size={18} className="text-sky-400" />
-                              <h3 className="text-lg font-black">{selectedParty.name}</h3>
+                          <div className="flex items-center gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <UserCheck size={18} className="text-sky-400 shrink-0" />
+                                <h3 className="text-lg font-black truncate">{selectedParty.name}</h3>
+                                {/* ICON PDF BUTTON */}
+                                <button 
+                                  onClick={downloadPartyPDF}
+                                  title="Download Party PDF Statement"
+                                  className="ml-2 bg-slate-800 hover:bg-sky-600 text-slate-300 hover:text-white p-2 rounded-xl transition-all cursor-pointer border border-slate-700/80 shadow-sm flex items-center justify-center shrink-0"
+                                >
+                                  <Download size={16} />
+                                </button>
+                              </div>
+                              <p className="text-xs text-slate-400 mt-0.5">{selectedParty.phone ? `+91 ${selectedParty.phone}` : 'No phone details'}</p>
                             </div>
-                            <p className="text-xs text-slate-400 mt-0.5">{selectedParty.phone ? `+91 ${selectedParty.phone}` : 'No phone details'}</p>
                           </div>
 
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                            <div className="text-left sm:text-right">
-                              <p className="text-[10px] uppercase font-bold text-slate-400">Ledger Balance</p>
-                              <h4 className={`text-xl font-black ${partyBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                Rs. {Math.abs(partyBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                              </h4>
-                              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300 inline-block mt-1">
-                                {partyBalance >= 0 ? 'You Get (+ In)' : 'You Give (- Out)'}
-                              </span>
-                            </div>
-
-                            {/* Download Party Statement PDF Button */}
-                            <button 
-                              onClick={downloadPartyPDF}
-                              className="bg-sky-600 hover:bg-sky-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase flex items-center gap-1.5 cursor-pointer shadow-md transition-all self-stretch sm:self-auto justify-center"
-                            >
-                              <Download size={14} /> PDF Statement
-                            </button>
+                          <div className="text-left sm:text-right shrink-0">
+                            <p className="text-[10px] uppercase font-bold text-slate-400">Ledger Balance</p>
+                            <h4 className={`text-xl font-black ${partyBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              Rs. {Math.abs(partyBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </h4>
+                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300 inline-block mt-1">
+                              {partyBalance >= 0 ? 'You Get (+ In)' : 'You Give (- Out)'}
+                            </span>
                           </div>
                         </div>
 
@@ -1159,7 +1155,7 @@ export default function CashLedgerDashboard() {
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                 <button 
                   type="button" 
-                  onClick={() => setShowAddPartyModal(false)}
+                  onClick={() => setShowAddPartyName(false)}
                   className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase cursor-pointer"
                 >
                   Cancel
