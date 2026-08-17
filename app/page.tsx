@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
@@ -19,6 +19,7 @@ export default function CashLedgerDashboard() {
   const [activeTab, setActiveTab] = useState('daybook');
   const [transactions, setTransactions] = useState<any[]>([]);
   const [parties, setParties] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
   const [selectedParty, setSelectedParty] = useState<any>(null);
 
   // Date Filter States
@@ -28,6 +29,7 @@ export default function CashLedgerDashboard() {
   // Modals
   const [showModal, setShowModal] = useState(false);
   const [showAddPartyModal, setShowAddPartyModal] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   // Form Fields
   const [partyName, setPartyName] = useState('');
@@ -39,6 +41,12 @@ export default function CashLedgerDashboard() {
   const [remarks, setRemarks] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [partySearchTerm, setPartySearchTerm] = useState('');
+
+  // Invoice Form Fields
+  const [invCustomerName, setInvCustomerName] = useState('');
+  const [invItemName, setInvItemName] = useState('');
+  const [invQty, setInvQty] = useState('1');
+  const [invPrice, setInvPrice] = useState('');
 
   // Profile Fields
   const [businessName, setBusinessName] = useState('My Business');
@@ -52,7 +60,6 @@ export default function CashLedgerDashboard() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        // DEVELOPER BYPASS FOR VISHWARAJ
         if (currentUser.email === 'vishwarajsingh234@gmail.com') {
           setIsPro(true);
         } else {
@@ -76,6 +83,7 @@ export default function CashLedgerDashboard() {
     if (!user) {
       setTransactions([]);
       setParties([]);
+      setInvoices([]);
       setSelectedParty(null);
       return;
     }
@@ -94,6 +102,13 @@ export default function CashLedgerDashboard() {
       if (partiesData.length > 0 && !selectedParty) {
         setSelectedParty(partiesData[0]);
       }
+    });
+
+    const qInvoices = query(collection(db, 'invoices'), where('userId', '==', user.uid));
+    const unsubInvoices = onSnapshot(qInvoices, (snapshot) => {
+      const invData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      invData.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setInvoices(invData);
     });
 
     const unsubProfile = onSnapshot(doc(db, 'profiles', user.uid), (docSnap) => {
@@ -115,6 +130,7 @@ export default function CashLedgerDashboard() {
     return () => {
       unsubTxns();
       unsubParties();
+      unsubInvoices();
       unsubProfile();
     };
   }, [user]);
@@ -143,7 +159,6 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // Filter Transactions based on Search & Date Range
   const filteredTransactions = transactions.filter(t => {
     const matchesSearch = 
       (t.remarks && t.remarks.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -237,6 +252,117 @@ export default function CashLedgerDashboard() {
     } catch (err) {
       alert('Failed to save party.');
     }
+  };
+
+  const handleCreateInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !invCustomerName || !invItemName || !invPrice) return;
+
+    try {
+      const invId = `inv_${Date.now()}`;
+      const totalAmount = parseFloat(invQty || '1') * parseFloat(invPrice);
+      const invoiceData = {
+        userId: user.uid,
+        invoiceNumber: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
+        customerName: invCustomerName,
+        itemName: invItemName,
+        quantity: parseInt(invQty || '1'),
+        price: parseFloat(invPrice),
+        total: totalAmount,
+        date: new Date().toISOString()
+      };
+
+      await setDoc(doc(db, 'invoices', invId), invoiceData);
+      setShowInvoiceModal(false);
+      setInvCustomerName('');
+      setInvItemName('');
+      setInvQty('1');
+      setInvPrice('');
+    } catch (err) {
+      alert('Failed to create invoice.');
+    }
+  };
+
+  const executeDownloadInvoicePDF = async (inv: any) => {
+    const { default: jsPDF } = await import('jspdf');
+
+    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    doc.setFont('times', 'normal');
+
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(0.8);
+    doc.rect(8, 8, 194, 281);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(18);
+    doc.setFont('times', 'bold');
+    doc.text(businessName.toUpperCase(), 14, 20);
+
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(9);
+    doc.setFont('times', 'normal');
+    doc.text([
+      phone ? `Phone: +91 ${phone}` : '',
+      address ? `Address: ${address}` : ''
+    ].filter(Boolean), 14, 26);
+
+    doc.setTextColor(2, 132, 199);
+    doc.setFontSize(15);
+    doc.setFont('times', 'bold');
+    doc.text('TAX INVOICE', 196, 20, { align: 'right' });
+
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(9);
+    doc.setFont('times', 'normal');
+    doc.text(`Invoice No: ${inv.invoiceNumber}`, 196, 26, { align: 'right' });
+    doc.text(`Date: ${new Date(inv.date).toLocaleDateString('en-IN')}`, 196, 31, { align: 'right' });
+
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.5);
+    doc.line(14, 38, 196, 38);
+
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(14, 44, 182, 18, 2, 2, 'FD');
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(10);
+    doc.setFont('times', 'bold');
+    doc.text('BILLED TO:', 18, 51);
+    doc.setFont('times', 'normal');
+    doc.text(inv.customerName, 18, 57);
+
+    // Table Header
+    doc.setFillColor(15, 23, 42);
+    doc.rect(14, 70, 182, 10, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.setFont('times', 'bold');
+    doc.text('ITEM DESCRIPTION', 18, 76);
+    doc.text('QTY', 120, 76);
+    doc.text('PRICE (RS.)', 150, 76);
+    doc.text('TOTAL (RS.)', 180, 76, { align: 'right' });
+
+    // Table Row
+    doc.setTextColor(51, 65, 85);
+    doc.setFont('times', 'normal');
+    doc.text(inv.itemName, 18, 88);
+    doc.text(inv.quantity.toString(), 120, 88);
+    doc.text(inv.price.toLocaleString('en-IN', { minimumFractionDigits: 2 }), 150, 88);
+    doc.text(inv.total.toLocaleString('en-IN', { minimumFractionDigits: 2 }), 192, 88, { align: 'right' });
+
+    doc.setDrawColor(226, 232, 240);
+    doc.line(14, 94, 196, 94);
+
+    // Total Amount Box
+    doc.setFillColor(240, 249, 255);
+    doc.roundedRect(130, 102, 66, 16, 2, 2, 'FD');
+    doc.setTextColor(3, 105, 161);
+    doc.setFontSize(9);
+    doc.setFont('times', 'bold');
+    doc.text('GRAND TOTAL:', 134, 110);
+    doc.setFontSize(12);
+    doc.text(`Rs. ${inv.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, 110, { align: 'right' });
+
+    doc.save(`${inv.invoiceNumber}_${inv.customerName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -633,6 +759,15 @@ export default function CashLedgerDashboard() {
             </button>
 
             <button 
+              onClick={() => setActiveTab('invoices')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === 'invoices' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+              }`}
+            >
+              <Receipt size={16} /> Invoice Generator
+            </button>
+
+            <button 
               onClick={() => setActiveTab('reports')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
                 activeTab === 'reports' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
@@ -699,6 +834,15 @@ export default function CashLedgerDashboard() {
         </button>
 
         <button 
+          onClick={() => setActiveTab('invoices')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
+            activeTab === 'invoices' ? 'text-sky-400' : 'text-slate-400'
+          }`}
+        >
+          <Receipt size={20} /> Invoices
+        </button>
+
+        <button 
           onClick={() => setActiveTab('reports')}
           className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
             activeTab === 'reports' ? 'text-sky-400' : 'text-slate-400'
@@ -725,6 +869,7 @@ export default function CashLedgerDashboard() {
               <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
                 {activeTab === 'daybook' && 'Cashbook Entries'}
                 {activeTab === 'parties' && 'Customer & Party Ledger'}
+                {activeTab === 'invoices' && 'Tax Invoice Generator'}
                 {activeTab === 'reports' && 'Reports & Statements'}
                 {activeTab === 'settings' && 'Store Profile'}
               </h2>
@@ -738,18 +883,29 @@ export default function CashLedgerDashboard() {
           </div>
 
           <div className="flex items-center gap-2.5 w-full sm:w-auto">
-            <button 
-              onClick={() => { setTxnType('CASH_IN'); setCategory('Sales'); setShowModal(true); }}
-              className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
-            >
-              <Plus size={15} /> Cash In
-            </button>
-            <button 
-              onClick={() => { setTxnType('CASH_OUT'); setCategory('Rent'); setShowModal(true); }}
-              className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
-            >
-              <Minus size={15} /> Cash Out
-            </button>
+            {activeTab === 'invoices' ? (
+              <button 
+                onClick={() => handleProAction(() => setShowInvoiceModal(true))}
+                className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all"
+              >
+                <Plus size={15} /> Create Tax Invoice {!isPro && <Crown size={12} className="text-amber-300 ml-1" />}
+              </button>
+            ) : (
+              <>
+                <button 
+                  onClick={() => { setTxnType('CASH_IN'); setCategory('Sales'); setShowModal(true); }}
+                  className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
+                >
+                  <Plus size={15} /> Cash In
+                </button>
+                <button 
+                  onClick={() => { setTxnType('CASH_OUT'); setCategory('Rent'); setShowModal(true); }}
+                  className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
+                >
+                  <Minus size={15} /> Cash Out
+                </button>
+              </>
+            )}
           </div>
         </header>
 
@@ -1140,6 +1296,72 @@ export default function CashLedgerDashboard() {
             </div>
           )}
 
+          {activeTab === 'invoices' && (
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-base md:text-lg font-bold text-slate-900">Tax Invoices</h3>
+                  <p className="text-xs text-slate-500 font-semibold">Generate and download customer billing invoices</p>
+                </div>
+                <button 
+                  onClick={() => handleProAction(() => setShowInvoiceModal(true))}
+                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Plus size={15} /> Create Invoice {!isPro && <Crown size={12} className="text-amber-300 ml-1" />}
+                </button>
+              </div>
+
+              {invoices.length === 0 ? (
+                <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-2xl">
+                  <Receipt size={40} className="mx-auto text-slate-300 mb-3" />
+                  <p className="font-bold text-slate-700 text-sm">No Tax Invoices Created Yet</p>
+                  <button 
+                    onClick={() => handleProAction(() => setShowInvoiceModal(true))}
+                    className="mt-3 bg-sky-600 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
+                  >
+                    + Create Invoice
+                  </button>
+                </div>
+              ) : (
+                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[600px]">
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-600 text-[10px] uppercase font-black border-b border-slate-200">
+                          <th className="p-3.5">Invoice No</th>
+                          <th className="p-3.5">Date</th>
+                          <th className="p-3.5">Customer Name</th>
+                          <th className="p-3.5">Item Description</th>
+                          <th className="p-3.5 text-right">Total Amount</th>
+                          <th className="p-3.5 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                        {invoices.map((inv) => (
+                          <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="p-3.5 font-mono font-bold text-slate-900">{inv.invoiceNumber}</td>
+                            <td className="p-3.5 text-slate-500 font-mono">{new Date(inv.date).toLocaleDateString('en-IN')}</td>
+                            <td className="p-3.5 font-bold text-slate-800">{inv.customerName}</td>
+                            <td className="p-3.5 text-slate-600">{inv.itemName} (Qty: {inv.quantity})</td>
+                            <td className="p-3.5 text-right font-black text-emerald-600">Rs. {inv.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className="p-3.5 text-center">
+                              <button 
+                                onClick={() => handleProAction(() => executeDownloadInvoicePDF(inv))}
+                                className="bg-slate-900 hover:bg-sky-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                              >
+                                <Download size={12} /> PDF
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'reports' && (
             <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-1">Download Account Statements</h3>
@@ -1250,7 +1472,7 @@ export default function CashLedgerDashboard() {
 
             <div className="space-y-1">
               <h3 className="text-xl font-black text-slate-900 tracking-tight">Unlock CashLedger PRO</h3>
-              <p className="text-xs text-slate-500 font-medium">Get unlimited PDF statements, analytics & WhatsApp reminders.</p>
+              <p className="text-xs text-slate-500 font-medium">Get unlimited PDF invoices, statements, analytics & WhatsApp reminders.</p>
             </div>
 
             <div className="space-y-3">
@@ -1424,6 +1646,85 @@ export default function CashLedgerDashboard() {
                   className="px-5 py-2 text-white bg-sky-600 hover:bg-sky-700 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
                 >
                   Save Party
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Invoice Modal (PRO FEATURE) */}
+      {showInvoiceModal && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
+            <h3 className="text-base font-extrabold uppercase mb-4 text-slate-900 flex items-center gap-2">
+              <Receipt size={18} className="text-sky-600" /> Create Tax Invoice (PRO)
+            </h3>
+            <form onSubmit={handleCreateInvoice} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Customer Name</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={invCustomerName} 
+                  onChange={(e) => setInvCustomerName(e.target.value)}
+                  placeholder="e.g. Rajesh Traders"
+                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Item / Product Description</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={invItemName} 
+                  onChange={(e) => setInvItemName(e.target.value)}
+                  placeholder="e.g. LED Bulb Box"
+                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Quantity</label>
+                  <input 
+                    type="number" 
+                    min="1"
+                    required 
+                    value={invQty} 
+                    onChange={(e) => setInvQty(e.target.value)}
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Price per unit (Rs.)</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    required 
+                    value={invPrice} 
+                    onChange={(e) => setInvPrice(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button 
+                  type="button" 
+                  onClick={() => setShowInvoiceGeneratorModal(false)}
+                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-5 py-2 text-white bg-sky-600 hover:bg-sky-700 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
+                >
+                  Generate & Save
                 </button>
               </div>
             </form>
