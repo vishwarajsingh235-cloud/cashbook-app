@@ -47,15 +47,24 @@ export default function CashLedgerDashboard() {
   const [address, setAddress] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // 1. Auth Listener & Pro Check
+  // 1. Auth Listener & Pro Check with Developer Bypass
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        const userDoc = await getDoc(doc(db, 'profiles', currentUser.uid));
-        if (userDoc.exists()) {
-          setIsPro(userDoc.data().isPro || false);
+        // DEVELOPER BYPASS FOR VISHWARAJ
+        if (currentUser.email === 'vishwarajsingh234@gmail.com') {
+          setIsPro(true);
+        } else {
+          const userDoc = await getDoc(doc(db, 'profiles', currentUser.uid));
+          if (userDoc.exists()) {
+            setIsPro(userDoc.data().isPro || false);
+          } else {
+            setIsPro(false);
+          }
         }
+      } else {
+        setIsPro(false);
       }
       setLoading(false);
     });
@@ -94,7 +103,9 @@ export default function CashLedgerDashboard() {
         setPhone(p.phone || '');
         setEmail(p.email || user.email || '');
         setAddress(p.address || '');
-        setIsPro(p.isPro || false);
+        if (user.email !== 'vishwarajsingh234@gmail.com') {
+          setIsPro(p.isPro || false);
+        }
       } else {
         setBusinessName(user.displayName || 'My Business');
         setEmail(user.email || '');
@@ -239,7 +250,7 @@ export default function CashLedgerDashboard() {
         phone,
         email: user.email,
         address,
-        isPro
+        isPro: user.email === 'vishwarajsingh234@gmail.com' ? true : isPro
       }, { merge: true });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
