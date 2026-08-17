@@ -330,23 +330,23 @@ export default function CashLedgerDashboard() {
     doc.setFont('times', 'normal');
     doc.text(inv.customerName, 18, 57);
 
-    // Table Header
+    // Table Header (Fixed Alignment Coordinates)
     doc.setFillColor(15, 23, 42);
     doc.rect(14, 70, 182, 10, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(9);
     doc.setFont('times', 'bold');
     doc.text('ITEM DESCRIPTION', 18, 76);
-    doc.text('QTY', 120, 76);
-    doc.text('PRICE (RS.)', 150, 76);
+    doc.text('QTY', 105, 76);
+    doc.text('PRICE (RS.)', 135, 76);
     doc.text('TOTAL (RS.)', 180, 76, { align: 'right' });
 
-    // Table Row
+    // Table Row (Aligned with Header coordinates)
     doc.setTextColor(51, 65, 85);
     doc.setFont('times', 'normal');
     doc.text(inv.itemName, 18, 88);
-    doc.text(inv.quantity.toString(), 120, 88);
-    doc.text(inv.price.toLocaleString('en-IN', { minimumFractionDigits: 2 }), 150, 88);
+    doc.text(inv.quantity.toString(), 105, 88);
+    doc.text(inv.price.toLocaleString('en-IN', { minimumFractionDigits: 2 }), 135, 88);
     doc.text(inv.total.toLocaleString('en-IN', { minimumFractionDigits: 2 }), 192, 88, { align: 'right' });
 
     doc.setDrawColor(226, 232, 240);
