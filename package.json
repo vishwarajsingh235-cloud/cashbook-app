@@ -17,7 +17,8 @@
     "next": "16.3.0",
     "pdfkit-table": "^0.2.11",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -3,11 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, setDoc, onSnapshot, query, where, getDoc } from 'firebase/firestore';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 export default function CashLedgerDashboard() {
   const [user, setUser] = useState<User | null>(null);
@@ -118,7 +119,6 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // PRO WRAPPER CHECK
   const handleProAction = (action: () => void) => {
     if (isPro) {
       action();
@@ -136,6 +136,13 @@ export default function CashLedgerDashboard() {
     .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
 
   const netBalance = totalCashIn - totalCashOut;
+
+  // Prepare Chart Data from transactions
+  const chartData = [
+    { name: 'Total In', amount: totalCashIn, fill: '#16a34a' },
+    { name: 'Total Out', amount: totalCashOut, fill: '#dc2626' },
+    { name: 'Net Balance', amount: Math.abs(netBalance), fill: '#0284c7' }
+  ];
 
   const partyTransactions = selectedParty 
     ? transactions.filter(t => t.party_id === selectedParty.id)
@@ -218,7 +225,6 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // WHATSAPP REMINDER
   const executeWhatsAppReminder = () => {
     if (!selectedParty) return;
     const cleanPhone = selectedParty.phone ? selectedParty.phone.replace(/[^0-9]/g, '') : '';
@@ -236,7 +242,6 @@ export default function CashLedgerDashboard() {
     window.open(whatsappUrl, '_blank');
   };
 
-  // FULL STATEMENT PDF
   const executeDownloadPDF = async () => {
     const { default: jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
@@ -345,7 +350,6 @@ export default function CashLedgerDashboard() {
     doc.save(`${businessName.replace(/[^a-zA-Z0-9]/g, '_')}_Statement.pdf`);
   };
 
-  // INDIVIDUAL PARTY PDF
   const executeDownloadPartyPDF = async () => {
     if (!selectedParty) return;
 
@@ -721,7 +725,8 @@ export default function CashLedgerDashboard() {
         <main className="p-4 md:p-8 flex-1 overflow-y-auto">
           {activeTab === 'daybook' && (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-6">
                 <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
                   <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Cash In</p>
@@ -756,6 +761,28 @@ export default function CashLedgerDashboard() {
                   <div className="p-3 bg-sky-50 text-sky-600 rounded-2xl border border-sky-100">
                     <Wallet size={22} />
                   </div>
+                </div>
+              </div>
+
+              {/* ANALYTICS CHART SECTION */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp size={18} className="text-sky-600" />
+                    <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Business Cash Flow Overview</h3>
+                  </div>
+                  <span className="text-[11px] font-semibold text-slate-400">Real-Time Summary</span>
+                </div>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} />
+                      <YAxis tick={{ fontSize: 12, fill: '#64748b' }} />
+                      <Tooltip formatter={(value: any) => `Rs. ${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} />
+                      <Bar dataKey="amount" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
 
@@ -1129,7 +1156,7 @@ export default function CashLedgerDashboard() {
         </main>
       </div>
 
-      {/* UPGRADE PAYWALL MODAL (FREEMIUM POPUP) */}
+      {/* UPGRADE PAYWALL MODAL */}
       {showUpgradeModal && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex justify-center items-center p-4 z-50">
           <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 text-center relative overflow-hidden space-y-6">
@@ -1146,7 +1173,7 @@ export default function CashLedgerDashboard() {
 
             <div className="space-y-1">
               <h3 className="text-xl font-black text-slate-900 tracking-tight">Unlock CashLedger PRO</h3>
-              <p className="text-xs text-slate-500 font-medium">Get unlimited PDF statements, party reports & WhatsApp reminders.</p>
+              <p className="text-xs text-slate-500 font-medium">Get unlimited PDF statements, analytics & WhatsApp reminders.</p>
             </div>
 
             <div className="space-y-3">
@@ -1157,7 +1184,7 @@ export default function CashLedgerDashboard() {
                   <div className="text-[11px] text-slate-500">Billed Rs. 599 annually</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-black text-sky-600">Rs. 49<span className="text-xs font-normal text-slate-500">/mo</span></div>
+                  <div className="text-lg font-black text-sky-600">Rs. 50<span className="text-xs font-normal text-slate-500">/mo</span></div>
                 </div>
               </div>
 
@@ -1285,7 +1312,7 @@ export default function CashLedgerDashboard() {
                   onClick={() => setShowAddPartyModal(false)}
                   className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase cursor-pointer"
                 >
-                  Cancel
+                  Cancel`
                 </button>
                 <button 
                   type="submit" 
