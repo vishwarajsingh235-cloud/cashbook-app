@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
@@ -21,6 +21,10 @@ export default function CashLedgerDashboard() {
   const [parties, setParties] = useState<any[]>([]);
   const [selectedParty, setSelectedParty] = useState<any>(null);
 
+  // Date Filter States
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
   // Modals
   const [showModal, setShowModal] = useState(false);
   const [showAddPartyModal, setShowAddPartyModal] = useState(false);
@@ -31,7 +35,7 @@ export default function CashLedgerDashboard() {
   const [txnType, setTxnType] = useState('CASH_IN');
   const [amount, setAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState('Cash');
-  const [category, setCategory] = useState('Sales'); // New Category Field
+  const [category, setCategory] = useState('Sales');
   const [remarks, setRemarks] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [partySearchTerm, setPartySearchTerm] = useState('');
@@ -128,11 +132,29 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  const totalCashIn = transactions
+  // Filter Transactions based on Search & Date Range
+  const filteredTransactions = transactions.filter(t => {
+    const matchesSearch = 
+      (t.remarks && t.remarks.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (t.payment_mode && t.payment_mode.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (t.category && t.category.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    if (!matchesSearch) return false;
+
+    if (startDate || endDate) {
+      const txnDateOnly = t.txn_date ? t.txn_date.split('T')[0] : '';
+      if (startDate && txnDateOnly < startDate) return false;
+      if (endDate && txnDateOnly > endDate) return false;
+    }
+
+    return true;
+  });
+
+  const totalCashIn = filteredTransactions
     .filter(t => t.txn_type === 'CASH_IN')
     .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
 
-  const totalCashOut = transactions
+  const totalCashOut = filteredTransactions
     .filter(t => t.txn_type === 'CASH_OUT')
     .reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
 
@@ -325,7 +347,7 @@ export default function CashLedgerDashboard() {
     doc.setFontSize(11);
     doc.text(`Rs. ${Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })} ${netBalance >= 0 ? 'Cr' : 'Dr'}`, 138, 51);
 
-    const tableData = transactions.map((t) => {
+    const tableData = filteredTransactions.map((t) => {
       const p = parties.find(party => party.id === t.party_id);
       return [
         new Date(t.txn_date).toLocaleDateString('en-IN'),
@@ -500,12 +522,6 @@ export default function CashLedgerDashboard() {
 
     doc.save(`${selectedParty.name.replace(/[^a-zA-Z0-9]/g, '_')}_Statement.pdf`);
   };
-
-  const filteredTransactions = transactions.filter(t => 
-    (t.remarks && t.remarks.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (t.payment_mode && t.payment_mode.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (t.category && t.category.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
 
   const filteredParties = parties.filter(p => 
     p.name.toLowerCase().includes(partySearchTerm.toLowerCase()) ||
@@ -790,24 +806,58 @@ export default function CashLedgerDashboard() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-                <div className="px-4 md:px-6 py-4 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
+              {/* DATE FILTER & SEARCH BAR */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden mb-6">
+                <div className="p-4 md:p-5 bg-slate-50/70 border-b border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <h3 className="font-bold text-slate-900 text-sm">Recent Transactions</h3>
+                    <h3 className="font-bold text-slate-900 text-sm">Transactions Ledger</h3>
                     <span className="text-[11px] bg-slate-200/70 text-slate-700 px-2.5 py-0.5 rounded-full font-extrabold">
-                      {filteredTransactions.length} Total
+                      {filteredTransactions.length} Filtered
                     </span>
                   </div>
 
-                  <div className="relative w-full sm:w-auto">
-                    <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Search entries or category..." 
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9 pr-4 py-1.5 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-semibold w-full sm:w-64 shadow-sm"
-                    />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-xl px-3 py-1.5 shadow-sm">
+                      <Calendar size={14} className="text-slate-400 shrink-0" />
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">From:</span>
+                      <input 
+                        type="date" 
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="text-xs font-semibold focus:outline-none bg-transparent text-slate-800 cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-xl px-3 py-1.5 shadow-sm">
+                      <Calendar size={14} className="text-slate-400 shrink-0" />
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">To:</span>
+                      <input 
+                        type="date" 
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="text-xs font-semibold focus:outline-none bg-transparent text-slate-800 cursor-pointer"
+                      />
+                    </div>
+
+                    {(startDate || endDate) && (
+                      <button 
+                        onClick={() => { setStartDate(''); setEndDate(''); }}
+                        className="text-xs font-bold text-rose-600 hover:text-rose-700 underline px-1 cursor-pointer"
+                      >
+                        Reset Dates
+                      </button>
+                    )}
+
+                    <div className="relative w-full sm:w-auto">
+                      <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
+                      <input 
+                        type="text" 
+                        placeholder="Search entries..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9 pr-4 py-1.5 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-semibold w-full sm:w-56 shadow-sm"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -827,7 +877,7 @@ export default function CashLedgerDashboard() {
                       {filteredTransactions.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="text-center py-12 text-slate-400 font-medium text-xs">
-                            No transactions recorded yet in your account.
+                            No transactions found for the selected date range.
                           </td>
                         </tr>
                       ) : (
@@ -1082,7 +1132,7 @@ export default function CashLedgerDashboard() {
           {activeTab === 'reports' && (
             <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-1">Download Account Statements</h3>
-              <p className="text-xs text-slate-500 mb-6">Generate and download PDF account reports with category breakdown</p>
+              <p className="text-xs text-slate-500 mb-6">Generate and download filtered PDF account reports</p>
 
               <div className="p-6 border border-slate-200/80 rounded-2xl hover:border-sky-500 transition-all bg-slate-50/30 max-w-md relative">
                 {!isPro && (
@@ -1229,7 +1279,7 @@ export default function CashLedgerDashboard() {
         </div>
       )}
 
-      {/* Add Transaction Modal with Category Dropdown */}
+      {/* Add Transaction Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
