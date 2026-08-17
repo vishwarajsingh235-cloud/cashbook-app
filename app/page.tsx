@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
@@ -31,6 +31,7 @@ export default function CashLedgerDashboard() {
   const [txnType, setTxnType] = useState('CASH_IN');
   const [amount, setAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState('Cash');
+  const [category, setCategory] = useState('Sales'); // New Category Field
   const [remarks, setRemarks] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [partySearchTerm, setPartySearchTerm] = useState('');
@@ -137,7 +138,6 @@ export default function CashLedgerDashboard() {
 
   const netBalance = totalCashIn - totalCashOut;
 
-  // Prepare Chart Data from transactions
   const chartData = [
     { name: 'Total In', amount: totalCashIn, fill: '#16a34a' },
     { name: 'Total Out', amount: totalCashOut, fill: '#dc2626' },
@@ -170,6 +170,7 @@ export default function CashLedgerDashboard() {
         txn_type: txnType,
         amount: parseFloat(amount),
         payment_mode: paymentMode,
+        category: category || (txnType === 'CASH_IN' ? 'Sales' : 'General'),
         remarks: remarks || (activeTab === 'parties' && selectedParty ? `${txnType === 'CASH_IN' ? 'Payment from' : 'Payment to'} ${selectedParty.name}` : 'Cash Transaction'),
         txn_date: new Date().toISOString()
       });
@@ -329,6 +330,7 @@ export default function CashLedgerDashboard() {
       return [
         new Date(t.txn_date).toLocaleDateString('en-IN'),
         p ? `${p.name} - ${t.remarks}` : (t.remarks || 'Cash Transaction'),
+        t.category || 'General',
         t.payment_mode || 'Cash',
         t.txn_type === 'CASH_OUT' ? parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-',
         t.txn_type === 'CASH_IN' ? parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-'
@@ -337,13 +339,13 @@ export default function CashLedgerDashboard() {
 
     autoTable(doc, {
       startY: 61,
-      head: [['DATE', 'PARTICULARS / REMARKS', 'MODE', 'DEBIT (RS.)', 'CREDIT (RS.)']],
-      body: tableData.length > 0 ? tableData : [['-', 'No transactions recorded', '-', '-', '-']],
+      head: [['DATE', 'PARTICULARS / REMARKS', 'CATEGORY', 'MODE', 'DEBIT (RS.)', 'CREDIT (RS.)']],
+      body: tableData.length > 0 ? tableData : [['-', 'No transactions recorded', '-', '-', '-', '-']],
       theme: 'grid',
       styles: { font: 'times', fontSize: 9 },
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', font: 'times' },
       bodyStyles: { fontSize: 9, textColor: [51, 65, 85], font: 'times' },
-      columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 80 }, 2: { cellWidth: 22 }, 3: { cellWidth: 27, halign: 'right' }, 4: { cellWidth: 28, halign: 'right' } },
+      columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 65 }, 2: { cellWidth: 25 }, 3: { cellWidth: 20 }, 4: { cellWidth: 25, halign: 'right' }, 5: { cellWidth: 25, halign: 'right' } },
       margin: { left: 14, right: 14 }
     });
 
@@ -453,6 +455,7 @@ export default function CashLedgerDashboard() {
     const tableData = partyTransactions.map((t) => [
       new Date(t.txn_date).toLocaleDateString('en-IN'),
       t.remarks || 'Cash Entry',
+      t.category || 'General',
       t.payment_mode || 'Cash',
       t.txn_type === 'CASH_OUT' ? parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-',
       t.txn_type === 'CASH_IN' ? parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-'
@@ -460,13 +463,13 @@ export default function CashLedgerDashboard() {
 
     autoTable(doc, {
       startY: 79,
-      head: [['DATE', 'REMARKS / PARTICULARS', 'MODE', 'GIVEN (RS.)', 'RECEIVED (RS.)']],
-      body: tableData.length > 0 ? tableData : [['-', `No entries recorded for ${selectedParty.name}`, '-', '-', '-']],
+      head: [['DATE', 'REMARKS / PARTICULARS', 'CATEGORY', 'MODE', 'GIVEN (RS.)', 'RECEIVED (RS.)']],
+      body: tableData.length > 0 ? tableData : [['-', `No entries recorded for ${selectedParty.name}`, '-', '-', '-', '-']],
       theme: 'grid',
       styles: { font: 'times', fontSize: 9 },
       headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', font: 'times' },
       bodyStyles: { fontSize: 9, textColor: [51, 65, 85], font: 'times' },
-      columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 80 }, 2: { cellWidth: 22 }, 3: { cellWidth: 27, halign: 'right' }, 4: { cellWidth: 28, halign: 'right' } },
+      columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 65 }, 2: { cellWidth: 25 }, 3: { cellWidth: 20 }, 4: { cellWidth: 25, halign: 'right' }, 5: { cellWidth: 25, halign: 'right' } },
       margin: { left: 14, right: 14 }
     });
 
@@ -500,7 +503,8 @@ export default function CashLedgerDashboard() {
 
   const filteredTransactions = transactions.filter(t => 
     (t.remarks && t.remarks.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (t.payment_mode && t.payment_mode.toLowerCase().includes(searchTerm.toLowerCase()))
+    (t.payment_mode && t.payment_mode.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (t.category && t.category.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const filteredParties = parties.filter(p => 
@@ -708,13 +712,13 @@ export default function CashLedgerDashboard() {
 
           <div className="flex items-center gap-2.5 w-full sm:w-auto">
             <button 
-              onClick={() => { setTxnType('CASH_IN'); setShowModal(true); }}
+              onClick={() => { setTxnType('CASH_IN'); setCategory('Sales'); setShowModal(true); }}
               className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
             >
               <Plus size={15} /> Cash In
             </button>
             <button 
-              onClick={() => { setTxnType('CASH_OUT'); setShowModal(true); }}
+              onClick={() => { setTxnType('CASH_OUT'); setCategory('Rent'); setShowModal(true); }}
               className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
             >
               <Minus size={15} /> Cash Out
@@ -799,7 +803,7 @@ export default function CashLedgerDashboard() {
                     <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
                     <input 
                       type="text" 
-                      placeholder="Search entries..." 
+                      placeholder="Search entries or category..." 
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-9 pr-4 py-1.5 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-semibold w-full sm:w-64 shadow-sm"
@@ -808,11 +812,12 @@ export default function CashLedgerDashboard() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse min-w-[600px]">
+                  <table className="w-full text-left border-collapse min-w-[700px]">
                     <thead>
                       <tr className="bg-slate-100/70 text-slate-600 text-[10px] uppercase font-black border-b border-slate-200">
                         <th className="p-4">Date & Time</th>
                         <th className="p-4">Particulars / Remarks</th>
+                        <th className="p-4">Category</th>
                         <th className="p-4">Payment Method</th>
                         <th className="p-4 text-right">Cash In (Rs.)</th>
                         <th className="p-4 text-right">Cash Out (Rs.)</th>
@@ -821,7 +826,7 @@ export default function CashLedgerDashboard() {
                     <tbody className="divide-y divide-slate-100 text-sm font-medium text-slate-800">
                       {filteredTransactions.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="text-center py-12 text-slate-400 font-medium text-xs">
+                          <td colSpan={6} className="text-center py-12 text-slate-400 font-medium text-xs">
                             No transactions recorded yet in your account.
                           </td>
                         </tr>
@@ -840,6 +845,11 @@ export default function CashLedgerDashboard() {
                                     <span>{t.remarks}</span>
                                   </span>
                                 ) : (t.remarks || 'Cash Transaction')}
+                              </td>
+                              <td className="p-4">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                                  <Tag size={10} /> {t.category || 'General'}
+                                </span>
                               </td>
                               <td className="p-4">
                                 <span className="px-2 py-1 bg-slate-100 border border-slate-200 text-slate-700 rounded-md text-[10px] font-black uppercase tracking-wider">
@@ -993,13 +1003,13 @@ export default function CashLedgerDashboard() {
                           </div>
                           <div className="flex items-center gap-2 w-full sm:w-auto">
                             <button 
-                              onClick={() => { setTxnType('CASH_IN'); setShowModal(true); }}
+                              onClick={() => { setTxnType('CASH_IN'); setCategory('Sales'); setShowModal(true); }}
                               className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all"
                             >
                               <Plus size={14} /> Received
                             </button>
                             <button 
-                              onClick={() => { setTxnType('CASH_OUT'); setShowModal(true); }}
+                              onClick={() => { setTxnType('CASH_OUT'); setCategory('General Expense'); setShowModal(true); }}
                               className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all"
                             >
                               <Minus size={14} /> Given
@@ -1009,11 +1019,12 @@ export default function CashLedgerDashboard() {
 
                         <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
                           <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse min-w-[500px]">
+                            <table className="w-full text-left border-collapse min-w-[600px]">
                               <thead>
                                 <tr className="bg-slate-100 text-slate-600 text-[10px] uppercase font-black border-b border-slate-200">
                                   <th className="p-3">Date</th>
                                   <th className="p-3">Remarks / Particulars</th>
+                                  <th className="p-3">Category</th>
                                   <th className="p-3">Mode</th>
                                   <th className="p-3 text-right">Given (- Out)</th>
                                   <th className="p-3 text-right">Received (+ In)</th>
@@ -1022,7 +1033,7 @@ export default function CashLedgerDashboard() {
                               <tbody className="divide-y divide-slate-100 text-xs font-medium">
                                 {partyTransactions.length === 0 ? (
                                   <tr>
-                                    <td colSpan={5} className="text-center py-10 text-slate-400 font-medium">
+                                    <td colSpan={6} className="text-center py-10 text-slate-400 font-medium">
                                       No entries recorded for {selectedParty.name} yet.
                                     </td>
                                   </tr>
@@ -1033,6 +1044,11 @@ export default function CashLedgerDashboard() {
                                         {new Date(t.txn_date).toLocaleDateString('en-IN')}
                                       </td>
                                       <td className="p-3 font-bold text-slate-800">{t.remarks}</td>
+                                      <td className="p-3">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded text-[9px] font-black uppercase">
+                                          <Tag size={9} /> {t.category || 'General'}
+                                        </span>
+                                      </td>
                                       <td className="p-3">
                                         <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 rounded text-[9px] font-bold">
                                           {t.payment_mode}
@@ -1066,7 +1082,7 @@ export default function CashLedgerDashboard() {
           {activeTab === 'reports' && (
             <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-1">Download Account Statements</h3>
-              <p className="text-xs text-slate-500 mb-6">Generate and download PDF account reports</p>
+              <p className="text-xs text-slate-500 mb-6">Generate and download PDF account reports with category breakdown</p>
 
               <div className="p-6 border border-slate-200/80 rounded-2xl hover:border-sky-500 transition-all bg-slate-50/30 max-w-md relative">
                 {!isPro && (
@@ -1213,7 +1229,7 @@ export default function CashLedgerDashboard() {
         </div>
       )}
 
-      {/* Add Transaction Modal */}
+      {/* Add Transaction Modal with Category Dropdown */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
@@ -1234,18 +1250,46 @@ export default function CashLedgerDashboard() {
                 />
               </div>
 
-              <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Payment Method</label>
-                <select 
-                  value={paymentMode} 
-                  onChange={(e) => setPaymentMode(e.target.value)}
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500"
-                >
-                  <option value="Cash">Cash</option>
-                  <option value="UPI">UPI</option>
-                  <option value="Bank">Bank Transfer</option>
-                  <option value="Cheque">Cheque</option>
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Payment Method</label>
+                  <select 
+                    value={paymentMode} 
+                    onChange={(e) => setPaymentMode(e.target.value)}
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  >
+                    <option value="Cash">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Bank">Bank Transfer</option>
+                    <option value="Cheque">Cheque</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Category</label>
+                  <select 
+                    value={category} 
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  >
+                    {txnType === 'CASH_IN' ? (
+                      <>
+                        <option value="Sales">Sales</option>
+                        <option value="Investment">Investment</option>
+                        <option value="Other Income">Other Income</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="Rent">Rent</option>
+                        <option value="Salary">Salary / Wages</option>
+                        <option value="Bills / Utilities">Bills / Utilities</option>
+                        <option value="Inventory / Stock">Inventory / Stock</option>
+                        <option value="Transport">Transport</option>
+                        <option value="General Expense">General Expense</option>
+                      </>
+                    )}
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -1312,7 +1356,7 @@ export default function CashLedgerDashboard() {
                   onClick={() => setShowAddPartyModal(false)}
                   className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase cursor-pointer"
                 >
-                  Cancel`
+                  Cancel
                 </button>
                 <button 
                   type="submit" 
