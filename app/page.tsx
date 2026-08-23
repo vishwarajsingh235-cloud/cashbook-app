@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
@@ -42,11 +42,11 @@ export default function CashLedgerDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [partySearchTerm, setPartySearchTerm] = useState('');
 
-  // Invoice Form Fields
+  // Multi-Item Invoice Form States
   const [invCustomerName, setInvCustomerName] = useState('');
-  const [invItemName, setInvItemName] = useState('');
-  const [invQty, setInvQty] = useState('1');
-  const [invPrice, setInvPrice] = useState('');
+  const [itemsList, setItemsList] = useState<any[]>([
+    { name: '', qty: '1', price: '' }
+  ]);
 
   // Profile Fields
   const [businessName, setBusinessName] = useState('My Business');
@@ -254,30 +254,54 @@ export default function CashLedgerDashboard() {
     }
   };
 
+  // Add Item row in modal
+  const handleAddItemRow = () => {
+    setItemsList([...itemsList, { name: '', qty: '1', price: '' }]);
+  };
+
+  const handleRemoveItemRow = (index: number) => {
+    if (itemsList.length === 1) return;
+    const list = [...itemsList];
+    list.splice(index, 1);
+    setItemsList(list);
+  };
+
+  const handleItemChange = (index: number, field: string, value: string) => {
+    const list = [...itemsList];
+    list[index][field] = value;
+    setItemsList(list);
+  };
+
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !invCustomerName || !invItemName || !invPrice) return;
+    if (!user || !invCustomerName || itemsList.length === 0) return;
 
     try {
       const invId = `inv_${Date.now()}`;
-      const totalAmount = parseFloat(invQty || '1') * parseFloat(invPrice);
+      
+      // Calculate total for all items
+      let grandTotal = 0;
+      const formattedItems = itemsList.map(item => {
+        const q = parseInt(item.qty || '1');
+        const p = parseFloat(item.price || '0');
+        const tot = q * p;
+        grandTotal += tot;
+        return { name: item.name, qty: q, price: p, total: tot };
+      });
+
       const invoiceData = {
         userId: user.uid,
         invoiceNumber: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
         customerName: invCustomerName,
-        itemName: invItemName,
-        quantity: parseInt(invQty || '1'),
-        price: parseFloat(invPrice),
-        total: totalAmount,
+        items: formattedItems,
+        total: grandTotal,
         date: new Date().toISOString()
       };
 
       await setDoc(doc(db, 'invoices', invId), invoiceData);
       setShowInvoiceModal(false);
       setInvCustomerName('');
-      setInvItemName('');
-      setInvQty('1');
-      setInvPrice('');
+      setItemsList([{ name: '', qty: '1', price: '' }]);
     } catch (err) {
       alert('Failed to create invoice.');
     }
@@ -341,26 +365,36 @@ export default function CashLedgerDashboard() {
     doc.text('PRICE (RS.)', 135, 76);
     doc.text('TOTAL (RS.)', 180, 76, { align: 'right' });
 
-    // Table Row (Perfect Alignment under TOTAL header)
-    doc.setTextColor(51, 65, 85);
-    doc.setFont('times', 'normal');
-    doc.text(inv.itemName, 18, 88);
-    doc.text(inv.quantity.toString(), 105, 88);
-    doc.text(inv.price.toLocaleString('en-IN', { minimumFractionDigits: 2 }), 135, 88);
-    doc.text(inv.total.toLocaleString('en-IN', { minimumFractionDigits: 2 }), 185, 88, { align: 'right' });
+    // Loop through Multiple Items in Invoice
+    let startY = 88;
+    const itemsArray = inv.items || [{ name: inv.itemName, qty: inv.quantity, price: inv.price, total: inv.total }];
+
+    itemsArray.forEach((item: any, index: number) => {
+      doc.setTextColor(51, 65, 85);
+      doc.setFont('times', 'normal');
+      doc.text(item.name || 'Item', 18, startY);
+      doc.text(item.qty.toString(), 105, startY);
+      doc.text(item.price.toLocaleString('en-IN', { minimumFractionDigits: 2 }), 135, startY);
+      doc.text(item.total.toLocaleString('en-IN', { minimumFractionDigits: 2 }), 185, startY, { align: 'right' });
+
+      // Light separator line between items
+      doc.setDrawColor(240, 242, 245);
+      doc.line(14, startY + 4, 196, startY + 4);
+      startY += 10;
+    });
 
     doc.setDrawColor(226, 232, 240);
-    doc.line(14, 94, 196, 94);
+    doc.line(14, startY + 2, 196, startY + 2);
 
-    // Total Amount Box
+    // Grand Total Box (Placed nicely below items table)
     doc.setFillColor(240, 249, 255);
-    doc.roundedRect(130, 102, 66, 16, 2, 2, 'FD');
+    doc.roundedRect(130, startY + 8, 66, 16, 2, 2, 'FD');
     doc.setTextColor(3, 105, 161);
     doc.setFontSize(9);
     doc.setFont('times', 'bold');
-    doc.text('GRAND TOTAL:', 134, 110);
+    doc.text('GRAND TOTAL:', 134, startY + 16);
     doc.setFontSize(12);
-    doc.text(`Rs. ${inv.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, 110, { align: 'right' });
+    doc.text(`Rs. ${inv.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, startY + 16, { align: 'right' });
 
     doc.save(`${inv.invoiceNumber}_${inv.customerName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   };
@@ -1331,7 +1365,7 @@ export default function CashLedgerDashboard() {
                           <th className="p-3.5">Invoice No</th>
                           <th className="p-3.5">Date</th>
                           <th className="p-3.5">Customer Name</th>
-                          <th className="p-3.5">Item Description</th>
+                          <th className="p-3.5">Items Summary</th>
                           <th className="p-3.5 text-right">Total Amount</th>
                           <th className="p-3.5 text-center">Action</th>
                         </tr>
@@ -1342,7 +1376,9 @@ export default function CashLedgerDashboard() {
                             <td className="p-3.5 font-mono font-bold text-slate-900">{inv.invoiceNumber}</td>
                             <td className="p-3.5 text-slate-500 font-mono">{new Date(inv.date).toLocaleDateString('en-IN')}</td>
                             <td className="p-3.5 font-bold text-slate-800">{inv.customerName}</td>
-                            <td className="p-3.5 text-slate-600">{inv.itemName} (Qty: {inv.quantity})</td>
+                            <td className="p-3.5 text-slate-600">
+                              {inv.items ? `${inv.items.length} item(s)` : `${inv.itemName} (Qty: ${inv.quantity})`}
+                            </td>
                             <td className="p-3.5 text-right font-black text-emerald-600">Rs. {inv.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                             <td className="p-3.5 text-center">
                               <button 
@@ -1653,12 +1689,12 @@ export default function CashLedgerDashboard() {
         </div>
       )}
 
-      {/* Create Invoice Modal (PRO FEATURE) */}
+      {/* Create Multi-Item Invoice Modal (PRO FEATURE) */}
       {showInvoiceModal && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 max-h-[90vh] overflow-y-auto">
             <h3 className="text-base font-extrabold uppercase mb-4 text-slate-900 flex items-center gap-2">
-              <Receipt size={18} className="text-sky-600" /> Create Tax Invoice (PRO)
+              <Receipt size={18} className="text-sky-600" /> Create Multi-Item Tax Invoice (PRO)
             </h3>
             <form onSubmit={handleCreateInvoice} className="space-y-4">
               <div>
@@ -1668,48 +1704,62 @@ export default function CashLedgerDashboard() {
                   required 
                   value={invCustomerName} 
                   onChange={(e) => setInvCustomerName(e.target.value)}
-                  placeholder="e.g. Rajesh Traders"
+                  placeholder="e.g. SK Confectionary"
                   className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
 
-              <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Item / Product Description</label>
-                <input 
-                  type="text" 
-                  required 
-                  value={invItemName} 
-                  onChange={(e) => setInvItemName(e.target.value)}
-                  placeholder="e.g. LED Bulb Box"
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Quantity</label>
-                  <input 
-                    type="number" 
-                    min="1"
-                    required 
-                    value={invQty} 
-                    onChange={(e) => setInvQty(e.target.value)}
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  />
+              <div className="space-y-3 pt-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-[11px] font-black text-slate-700 uppercase">Products / Items List</label>
+                  <button 
+                    type="button" 
+                    onClick={handleAddItemRow}
+                    className="text-xs bg-sky-50 text-sky-600 border border-sky-200 px-3 py-1 rounded-lg font-bold hover:bg-sky-100 cursor-pointer"
+                  >
+                    + Add Another Item
+                  </button>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Price per unit (Rs.)</label>
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    required 
-                    value={invPrice} 
-                    onChange={(e) => setInvPrice(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  />
-                </div>
+                {itemsList.map((item, index) => (
+                  <div key={index} className="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="Item Name (e.g. KitKat)" 
+                      value={item.name}
+                      onChange={(e) => handleItemChange(index, 'name', e.target.value)}
+                      className="flex-1 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 bg-white"
+                    />
+                    <input 
+                      type="number" 
+                      min="1"
+                      required
+                      placeholder="Qty" 
+                      value={item.qty}
+                      onChange={(e) => handleItemChange(index, 'qty', e.target.value)}
+                      className="w-16 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 bg-white"
+                    />
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      required
+                      placeholder="Price" 
+                      value={item.price}
+                      onChange={(e) => handleItemChange(index, 'price', e.target.value)}
+                      className="w-24 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 bg-white"
+                    />
+                    {itemsList.length > 1 && (
+                      <button 
+                        type="button" 
+                        onClick={() => handleRemoveItemRow(index)}
+                        className="text-rose-500 hover:text-rose-700 p-1 cursor-pointer"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
@@ -1724,7 +1774,7 @@ export default function CashLedgerDashboard() {
                   type="submit" 
                   className="px-5 py-2 text-white bg-sky-600 hover:bg-sky-700 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
                 >
-                  Generate & Save
+                  Generate & Save Invoice
                 </button>
               </div>
             </form>
