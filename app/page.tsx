@@ -168,17 +168,14 @@ export default function CashLedgerDashboard() {
     if (!confirmReset) return;
 
     try {
-      // 1. Delete all transactions
       const qTxns = query(collection(db, 'transactions'), where('userId', '==', user.uid));
       const snapTxns = await getDocs(qTxns);
       const deleteTxns = snapTxns.docs.map(d => deleteDoc(doc(db, 'transactions', d.id)));
 
-      // 2. Delete all parties
       const qParties = query(collection(db, 'parties'), where('userId', '==', user.uid));
       const snapParties = await getDocs(qParties);
       const deleteParties = snapParties.docs.map(d => deleteDoc(doc(db, 'parties', d.id)));
 
-      // 3. Delete all invoices
       const qInvoices = query(collection(db, 'invoices'), where('userId', '==', user.uid));
       const snapInvoices = await getDocs(qInvoices);
       const deleteInvoices = snapInvoices.docs.map(d => deleteDoc(doc(db, 'invoices', d.id)));
@@ -811,7 +808,7 @@ export default function CashLedgerDashboard() {
                 activeTab === 'daybook' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
-              <BookOpen size={16} /> Cashbook
+              <BookOpen size={16} className="shrink-0" /> <span className="truncate">Cashbook</span>
             </button>
 
             <button 
@@ -820,7 +817,7 @@ export default function CashLedgerDashboard() {
                 activeTab === 'parties' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
-              <Users size={16} /> Customers & Parties
+              <Users size={16} className="shrink-0" /> <span className="truncate">Parties</span>
             </button>
 
             <button 
@@ -829,7 +826,7 @@ export default function CashLedgerDashboard() {
                 activeTab === 'invoices' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
-              <Receipt size={16} /> Invoice Generator
+              <Receipt size={16} className="shrink-0" /> <span className="truncate">Invoices</span>
             </button>
 
             <button 
@@ -838,7 +835,7 @@ export default function CashLedgerDashboard() {
                 activeTab === 'reports' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
-              <FileSpreadsheet size={16} /> Reports & Exports
+              <FileSpreadsheet size={16} className="shrink-0" /> <span className="truncate">Reports</span>
             </button>
 
             <button 
@@ -847,7 +844,7 @@ export default function CashLedgerDashboard() {
                 activeTab === 'settings' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
-              <Settings size={16} /> Store Profile
+              <Settings size={16} className="shrink-0" /> <span className="truncate">Profile</span>
             </button>
           </nav>
         </div>
@@ -879,50 +876,50 @@ export default function CashLedgerDashboard() {
       </aside>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-950 text-white flex justify-around items-center border-t border-slate-800 p-2 shadow-2xl">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-950 text-white flex justify-around items-center border-t border-slate-800 px-1 py-2 shadow-2xl">
         <button 
           onClick={() => setActiveTab('daybook')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
+          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[55px] ${
             activeTab === 'daybook' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
-          <BookOpen size={20} /> Cashbook
+          <BookOpen size={18} className="shrink-0" /> <span className="truncate">Cashbook</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('parties')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
+          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[55px] ${
             activeTab === 'parties' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
-          <Users size={20} /> Parties
+          <Users size={18} className="shrink-0" /> <span className="truncate">Parties</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('invoices')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
+          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[55px] ${
             activeTab === 'invoices' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
-          <Receipt size={20} /> Invoices
+          <Receipt size={18} className="shrink-0" /> <span className="truncate">Invoices</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('reports')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
+          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[55px] ${
             activeTab === 'reports' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
-          <FileSpreadsheet size={20} /> Reports
+          <FileSpreadsheet size={18} className="shrink-0" /> <span className="truncate">Reports</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('settings')}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
+          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[55px] ${
             activeTab === 'settings' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
-          <Settings size={20} /> Profile
+          <Settings size={18} className="shrink-0" /> <span className="truncate">Profile</span>
         </button>
       </nav>
 
