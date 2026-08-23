@@ -254,7 +254,7 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // Add Item row in modal
+  // Multi-Item Handlers
   const handleAddItemRow = () => {
     setItemsList([...itemsList, { name: '', qty: '1', price: '' }]);
   };
@@ -278,8 +278,6 @@ export default function CashLedgerDashboard() {
 
     try {
       const invId = `inv_${Date.now()}`;
-      
-      // Calculate total for all items
       let grandTotal = 0;
       const formattedItems = itemsList.map(item => {
         const q = parseInt(item.qty || '1');
@@ -365,11 +363,11 @@ export default function CashLedgerDashboard() {
     doc.text('PRICE (RS.)', 135, 76);
     doc.text('TOTAL (RS.)', 180, 76, { align: 'right' });
 
-    // Loop through Multiple Items in Invoice
+    // Multi-Item Loop Renderer
     let startY = 88;
     const itemsArray = inv.items || [{ name: inv.itemName, qty: inv.quantity, price: inv.price, total: inv.total }];
 
-    itemsArray.forEach((item: any, index: number) => {
+    itemsArray.forEach((item: any) => {
       doc.setTextColor(51, 65, 85);
       doc.setFont('times', 'normal');
       doc.text(item.name || 'Item', 18, startY);
@@ -377,7 +375,6 @@ export default function CashLedgerDashboard() {
       doc.text(item.price.toLocaleString('en-IN', { minimumFractionDigits: 2 }), 135, startY);
       doc.text(item.total.toLocaleString('en-IN', { minimumFractionDigits: 2 }), 185, startY, { align: 'right' });
 
-      // Light separator line between items
       doc.setDrawColor(240, 242, 245);
       doc.line(14, startY + 4, 196, startY + 4);
       startY += 10;
@@ -386,7 +383,7 @@ export default function CashLedgerDashboard() {
     doc.setDrawColor(226, 232, 240);
     doc.line(14, startY + 2, 196, startY + 2);
 
-    // Grand Total Box (Placed nicely below items table)
+    // Grand Total Box
     doc.setFillColor(240, 249, 255);
     doc.roundedRect(130, startY + 8, 66, 16, 2, 2, 'FD');
     doc.setTextColor(3, 105, 161);
