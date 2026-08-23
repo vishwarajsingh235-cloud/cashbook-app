@@ -1652,7 +1652,7 @@ export default function CashLedgerDashboard() {
                   required 
                   value={partyName} 
                   onChange={(e) => setPartyName(e.target.value)}
-                  placeholder="e.g. Panwariya Pump"
+                  placeholder="Enter party name"
                   className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
@@ -1691,7 +1691,7 @@ export default function CashLedgerDashboard() {
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 max-h-[90vh] overflow-y-auto">
             <h3 className="text-base font-extrabold uppercase mb-4 text-slate-900 flex items-center gap-2">
-              <Receipt size={18} className="text-sky-600" /> Create Multi-Item Tax Invoice (PRO)
+              <Receipt size={18} className="text-sky-600" /> Create Tax Invoice
             </h3>
             <form onSubmit={handleCreateInvoice} className="space-y-4">
               <div>
@@ -1701,7 +1701,7 @@ export default function CashLedgerDashboard() {
                   required 
                   value={invCustomerName} 
                   onChange={(e) => setInvCustomerName(e.target.value)}
-                  placeholder="e.g. SK Confectionary"
+                  placeholder="Enter customer name"
                   className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
@@ -1714,7 +1714,7 @@ export default function CashLedgerDashboard() {
                     onClick={handleAddItemRow}
                     className="text-xs bg-sky-50 text-sky-600 border border-sky-200 px-3 py-1 rounded-lg font-bold hover:bg-sky-100 cursor-pointer"
                   >
-                    + Add Another Item
+                    + Add Item
                   </button>
                 </div>
 
@@ -1723,7 +1723,7 @@ export default function CashLedgerDashboard() {
                     <input 
                       type="text" 
                       required
-                      placeholder="Item Name (e.g. KitKat)" 
+                      placeholder="Item name" 
                       value={item.name}
                       onChange={(e) => handleItemChange(index, 'name', e.target.value)}
                       className="flex-1 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 bg-white"
@@ -1771,7 +1771,7 @@ export default function CashLedgerDashboard() {
                   type="submit" 
                   className="px-5 py-2 text-white bg-sky-600 hover:bg-sky-700 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
                 >
-                  Generate & Save Invoice
+                  Save & Generate PDF
                 </button>
               </div>
             </form>
