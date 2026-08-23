@@ -3,11 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { collection, doc, setDoc, onSnapshot, query, where, getDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 export default function CashLedgerDashboard() {
@@ -156,6 +156,40 @@ export default function CashLedgerDashboard() {
       action();
     } else {
       setShowUpgradeModal(true);
+    }
+  };
+
+  // RESET ALL DATA FOR CURRENT USER ONLY
+  const handleResetAllData = async () => {
+    if (!user) return;
+    const confirmReset = window.confirm(
+      "⚠️ WARNING: This will permanently delete all your transactions, parties, and invoices for this account. Are you sure you want to reset everything?"
+    );
+    if (!confirmReset) return;
+
+    try {
+      // 1. Delete all transactions
+      const qTxns = query(collection(db, 'transactions'), where('userId', '==', user.uid));
+      const snapTxns = await getDocs(qTxns);
+      const deleteTxns = snapTxns.docs.map(d => deleteDoc(doc(db, 'transactions', d.id)));
+
+      // 2. Delete all parties
+      const qParties = query(collection(db, 'parties'), where('userId', '==', user.uid));
+      const snapParties = await getDocs(qParties);
+      const deleteParties = snapParties.docs.map(d => deleteDoc(doc(db, 'parties', d.id)));
+
+      // 3. Delete all invoices
+      const qInvoices = query(collection(db, 'invoices'), where('userId', '==', user.uid));
+      const snapInvoices = await getDocs(qInvoices);
+      const deleteInvoices = snapInvoices.docs.map(d => deleteDoc(doc(db, 'invoices', d.id)));
+
+      await Promise.all([...deleteTxns, ...deleteParties, ...deleteInvoices]);
+
+      alert('All data has been successfully reset! Your account is now clean.');
+      setActiveTab('daybook');
+    } catch (err) {
+      console.error("Error resetting data:", err);
+      alert('Failed to reset data. Please try again.');
     }
   };
 
@@ -1421,68 +1455,87 @@ export default function CashLedgerDashboard() {
           )}
 
           {activeTab === 'settings' && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm max-w-2xl">
-              <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">Store & Subscription</h3>
-                  <p className="text-xs text-slate-500">Manage your business profile and plan</p>
+            <div className="space-y-6 max-w-2xl">
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm">
+                <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Store & Subscription</h3>
+                    <p className="text-xs text-slate-500">Manage your business profile and plan</p>
+                  </div>
+                  <div className="bg-slate-100 px-3 py-1.5 rounded-xl flex items-center gap-2">
+                    <Crown size={15} className={isPro ? "text-amber-500" : "text-slate-400"} />
+                    <span className="text-xs font-bold text-slate-700">{isPro ? "PRO Plan Active" : "Free Plan"}</span>
+                  </div>
                 </div>
-                <div className="bg-slate-100 px-3 py-1.5 rounded-xl flex items-center gap-2">
-                  <Crown size={15} className={isPro ? "text-amber-500" : "text-slate-400"} />
-                  <span className="text-xs font-bold text-slate-700">{isPro ? "PRO Plan Active" : "Free Plan"}</span>
-                </div>
+
+                {saveSuccess && (
+                  <div className="mb-4 p-3 bg-emerald-50 text-emerald-800 rounded-xl font-bold text-xs flex items-center gap-2">
+                    <CheckCircle2 size={16} /> Business Profile Saved
+                  </div>
+                )}
+
+                <form onSubmit={handleSaveProfile} className="space-y-4">
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Business / Firm Name</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={businessName} 
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      placeholder="Enter business name"
+                      className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500" 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Phone Number</label>
+                    <input 
+                      type="text" 
+                      value={phone} 
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="Enter contact number"
+                      className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500" 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Address</label>
+                    <input 
+                      type="text" 
+                      value={address} 
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Enter business address"
+                      className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500" 
+                    />
+                  </div>
+
+                  <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+                    <button 
+                      type="submit"
+                      className="bg-slate-950 text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer w-full sm:w-auto text-center"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </form>
               </div>
 
-              {saveSuccess && (
-                <div className="mb-4 p-3 bg-emerald-50 text-emerald-800 rounded-xl font-bold text-xs flex items-center gap-2">
-                  <CheckCircle2 size={16} /> Business Profile Saved
+              {/* RESET / DANGER ZONE */}
+              <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 md:p-8 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <RotateCcw size={18} className="text-rose-600" />
+                  <h3 className="text-base font-bold text-rose-900">Reset Account Data</h3>
                 </div>
-              )}
-
-              <form onSubmit={handleSaveProfile} className="space-y-4">
-                <div>
-                  <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Business / Firm Name</label>
-                  <input 
-                    type="text" 
-                    required
-                    value={businessName} 
-                    onChange={(e) => setBusinessName(e.target.value)}
-                    placeholder="Enter business name"
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500" 
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Phone Number</label>
-                  <input 
-                    type="text" 
-                    value={phone} 
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="Enter contact number"
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500" 
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Address</label>
-                  <input 
-                    type="text" 
-                    value={address} 
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Enter business address"
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500" 
-                  />
-                </div>
-
-                <div className="flex justify-between items-center pt-4 border-t border-slate-100">
-                  <button 
-                    type="submit"
-                    className="bg-slate-950 text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer w-full sm:w-auto text-center"
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </form>
+                <p className="text-xs text-rose-700 mb-5 font-medium">
+                  Permanently delete all your daily transactions, customer party ledger accounts, and tax invoices. This action cannot be undone.
+                </p>
+                <button 
+                  onClick={handleResetAllData}
+                  className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider cursor-pointer shadow-md transition-all flex items-center gap-2"
+                >
+                  <Trash2 size={15} /> Clear & Reset All Entries
+                </button>
+              </div>
             </div>
           )}
         </main>
