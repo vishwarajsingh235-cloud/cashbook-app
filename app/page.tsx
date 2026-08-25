@@ -3,11 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle, Edit3 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where, getDocs, getDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 export default function CashLedgerDashboard() {
@@ -32,6 +32,7 @@ export default function CashLedgerDashboard() {
   const [showAddPartyModal, setShowAddPartyModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
 
   // Form Fields
   const [partyName, setPartyName] = useState('');
@@ -85,7 +86,7 @@ export default function CashLedgerDashboard() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Fetch User Data (Transactions, Parties, Invoices, Inventory)
+  // 2. Fetch User Data
   useEffect(() => {
     if (!user) {
       setTransactions([]);
@@ -174,7 +175,6 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // RESET ALL DATA FOR CURRENT USER ONLY
   const handleResetAllData = async () => {
     if (!user) return;
     const confirmReset = window.confirm(
@@ -209,25 +209,36 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // Add Inventory Item
-  const handleAddInventoryItem = async (e: React.FormEvent) => {
+  // Add or Update Inventory Item
+  const handleSaveInventoryItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !invItemName || !invStockQty || !invItemPrice) return;
 
     try {
-      const itemId = `item_${Date.now()}`;
-      await setDoc(doc(db, 'inventory', itemId), {
-        userId: user.uid,
-        name: invItemName,
-        stock: parseInt(invStockQty),
-        price: parseFloat(invItemPrice)
-      });
+      if (editingItem) {
+        // Update existing item
+        await updateDoc(doc(db, 'inventory', editingItem.id), {
+          name: invItemName,
+          stock: parseInt(invStockQty),
+          price: parseFloat(invItemPrice)
+        });
+      } else {
+        // Create new item
+        const itemId = `item_${Date.now()}`;
+        await setDoc(doc(db, 'inventory', itemId), {
+          userId: user.uid,
+          name: invItemName,
+          stock: parseInt(invStockQty),
+          price: parseFloat(invItemPrice)
+        });
+      }
       setShowInventoryModal(false);
+      setEditingItem(null);
       setInvItemName('');
       setInvStockQty('');
       setInvItemPrice('');
     } catch (err) {
-      alert('Failed to add item to inventory.');
+      alert('Failed to save inventory item.');
     }
   };
 
@@ -344,6 +355,7 @@ export default function CashLedgerDashboard() {
     setItemsList(list);
   };
 
+  // CREATE INVOICE & AUTOMATICALLY DEDUCT STOCK FROM INVENTORY
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !invCustomerName || itemsList.length === 0) return;
@@ -368,7 +380,20 @@ export default function CashLedgerDashboard() {
         date: new Date().toISOString()
       };
 
+      // Save Invoice
       await setDoc(doc(db, 'invoices', invId), invoiceData);
+
+      // Auto deduct from inventory if item matches
+      for (const soldItem of formattedItems) {
+        const matchedInvItem = inventory.find(i => i.name.toLowerCase() === soldItem.name.toLowerCase());
+        if (matchedInvItem) {
+          const newStock = Math.max(0, matchedInvItem.stock - soldItem.qty);
+          await updateDoc(doc(db, 'inventory', matchedInvItem.id), {
+            stock: newStock
+          });
+        }
+      }
+
       setShowInvoiceModal(false);
       setInvCustomerName('');
       setItemsList([{ name: '', qty: '1', price: '' }]);
@@ -1014,7 +1039,7 @@ export default function CashLedgerDashboard() {
               </button>
             ) : activeTab === 'inventory' ? (
               <button 
-                onClick={() => setShowInventoryModal(true)}
+                onClick={() => { setEditingItem(null); setInvItemName(''); setInvStockQty(''); setInvItemPrice(''); setShowInventoryModal(true); }}
                 className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all"
               >
                 <Plus size={15} /> Add Stock Item
@@ -1505,7 +1530,7 @@ export default function CashLedgerDashboard() {
                   <p className="text-xs text-slate-500 font-semibold">Manage store items and monitor stock levels</p>
                 </div>
                 <button 
-                  onClick={() => setShowInventoryModal(true)}
+                  onClick={() => { setEditingItem(null); setInvItemName(''); setInvStockQty(''); setInvItemPrice(''); setShowInventoryModal(true); }}
                   className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center justify-center gap-2"
                 >
                   <Plus size={15} /> Add Stock Item
@@ -1517,7 +1542,7 @@ export default function CashLedgerDashboard() {
                   <Package size={40} className="mx-auto text-slate-300 mb-3" />
                   <p className="font-bold text-slate-700 text-sm">No Stock Items Added Yet</p>
                   <button 
-                    onClick={() => setShowInventoryModal(true)}
+                    onClick={() => { setEditingItem(null); setInvItemName(''); setInvStockQty(''); setInvItemPrice(''); setShowInventoryModal(true); }}
                     className="mt-3 bg-sky-600 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
                   >
                     + Add Item
@@ -1553,13 +1578,27 @@ export default function CashLedgerDashboard() {
                                 </span>
                               )}
                             </td>
-                            <td className="p-3.5 text-center">
+                            <td className="p-3.5 text-center flex items-center justify-center gap-2">
+                              <button 
+                                onClick={() => {
+                                  setEditingItem(item);
+                                  setInvItemName(item.name);
+                                  setInvStockQty(item.stock.toString());
+                                  setInvItemPrice(item.price.toString());
+                                  setShowInventoryModal(true);
+                                }}
+                                title="Edit Stock"
+                                className="text-sky-600 hover:text-sky-800 p-1 cursor-pointer"
+                              >
+                                <Edit3 size={15} />
+                              </button>
                               <button 
                                 onClick={async () => {
                                   if (window.confirm(`Delete ${item.name} from inventory?`)) {
                                     await deleteDoc(doc(db, 'inventory', item.id));
                                   }
                                 }}
+                                title="Delete Item"
                                 className="text-rose-500 hover:text-rose-700 p-1 cursor-pointer"
                               >
                                 <Trash2 size={15} />
@@ -1885,14 +1924,14 @@ export default function CashLedgerDashboard() {
         </div>
       )}
 
-      {/* Add Inventory Item Modal */}
+      {/* Add / Edit Inventory Item Modal */}
       {showInventoryModal && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
             <h3 className="text-base font-extrabold uppercase mb-4 text-slate-900 flex items-center gap-2">
-              <Package size={18} className="text-sky-600" /> Add Stock Item
+              <Package size={18} className="text-sky-600" /> {editingItem ? 'Edit Stock Item' : 'Add Stock Item'}
             </h3>
-            <form onSubmit={handleAddInventoryItem} className="space-y-4">
+            <form onSubmit={handleSaveInventoryItem} className="space-y-4">
               <div>
                 <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Item Name</label>
                 <input 
@@ -1942,7 +1981,7 @@ export default function CashLedgerDashboard() {
                   type="submit" 
                   className="px-5 py-2 text-white bg-sky-600 hover:bg-sky-700 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
                 >
-                  Save Item
+                  {editingItem ? 'Update Stock' : 'Save Item'}
                 </button>
               </div>
             </form>
@@ -1950,7 +1989,7 @@ export default function CashLedgerDashboard() {
         </div>
       )}
 
-      {/* Create Multi-Item Invoice Modal (PRO FEATURE) */}
+      {/* Create Multi-Item Invoice Modal */}
       {showInvoiceModal && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 max-h-[90vh] overflow-y-auto">
