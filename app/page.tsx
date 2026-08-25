@@ -91,7 +91,7 @@ export default function CashLedgerDashboard() {
     const qTxns = query(collection(db, 'transactions'), where('userId', '==', user.uid));
     const unsubTxns = onSnapshot(qTxns, (snapshot) => {
       const txnsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      txnsData.sort((a: any, b: any) => new Date(b.txn_date).getTime() - new Date(a.txn_date).getTime());
+      txnsData.sort((a: any, b: any) => new Date(a.txn_date).getTime() - new Date(b.txn_date).getTime());
       setTransactions(txnsData);
     });
 
@@ -1365,12 +1365,6 @@ export default function CashLedgerDashboard() {
                   <h3 className="text-base md:text-lg font-bold text-slate-900">Tax Invoices</h3>
                   <p className="text-xs text-slate-500 font-semibold">Generate and download customer billing invoices</p>
                 </div>
-                <button 
-                  onClick={() => handleProAction(() => setShowInvoiceModal(true))}
-                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <Plus size={15} /> Create Invoice {!isPro && <Crown size={12} className="text-amber-300 ml-1" />}
-                </button>
               </div>
 
               {invoices.length === 0 ? (
