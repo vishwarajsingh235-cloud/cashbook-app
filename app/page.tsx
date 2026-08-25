@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
@@ -20,6 +20,7 @@ export default function CashLedgerDashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [parties, setParties] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [inventory, setInventory] = useState<any[]>([]);
   const [selectedParty, setSelectedParty] = useState<any>(null);
 
   // Date Filter States
@@ -30,6 +31,7 @@ export default function CashLedgerDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [showAddPartyModal, setShowAddPartyModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
 
   // Form Fields
   const [partyName, setPartyName] = useState('');
@@ -41,6 +43,11 @@ export default function CashLedgerDashboard() {
   const [remarks, setRemarks] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [partySearchTerm, setPartySearchTerm] = useState('');
+
+  // Inventory Form Fields
+  const [invItemName, setInvItemName] = useState('');
+  const [invStockQty, setInvStockQty] = useState('');
+  const [invItemPrice, setInvItemPrice] = useState('');
 
   // Multi-Item Invoice Form States
   const [invCustomerName, setInvCustomerName] = useState('');
@@ -78,12 +85,13 @@ export default function CashLedgerDashboard() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Fetch User Data
+  // 2. Fetch User Data (Transactions, Parties, Invoices, Inventory)
   useEffect(() => {
     if (!user) {
       setTransactions([]);
       setParties([]);
       setInvoices([]);
+      setInventory([]);
       setSelectedParty(null);
       return;
     }
@@ -111,6 +119,12 @@ export default function CashLedgerDashboard() {
       setInvoices(invData);
     });
 
+    const qInventory = query(collection(db, 'inventory'), where('userId', '==', user.uid));
+    const unsubInventory = onSnapshot(qInventory, (snapshot) => {
+      const invData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setInventory(invData);
+    });
+
     const unsubProfile = onSnapshot(doc(db, 'profiles', user.uid), (docSnap) => {
       if (docSnap.exists()) {
         const p = docSnap.data();
@@ -131,6 +145,7 @@ export default function CashLedgerDashboard() {
       unsubTxns();
       unsubParties();
       unsubInvoices();
+      unsubInventory();
       unsubProfile();
     };
   }, [user]);
@@ -163,7 +178,7 @@ export default function CashLedgerDashboard() {
   const handleResetAllData = async () => {
     if (!user) return;
     const confirmReset = window.confirm(
-      "⚠️ WARNING: This will permanently delete all your transactions, parties, and invoices for this account. Are you sure you want to reset everything?"
+      "⚠️ WARNING: This will permanently delete all your transactions, parties, invoices, and inventory items. Are you sure?"
     );
     if (!confirmReset) return;
 
@@ -180,13 +195,39 @@ export default function CashLedgerDashboard() {
       const snapInvoices = await getDocs(qInvoices);
       const deleteInvoices = snapInvoices.docs.map(d => deleteDoc(doc(db, 'invoices', d.id)));
 
-      await Promise.all([...deleteTxns, ...deleteParties, ...deleteInvoices]);
+      const qInv = query(collection(db, 'inventory'), where('userId', '==', user.uid));
+      const snapInv = await getDocs(qInv);
+      const deleteInv = snapInv.docs.map(d => deleteDoc(doc(db, 'inventory', d.id)));
 
-      alert('All data has been successfully reset! Your account is now clean.');
+      await Promise.all([...deleteTxns, ...deleteParties, ...deleteInvoices, ...deleteInv]);
+
+      alert('All data has been successfully reset!');
       setActiveTab('daybook');
     } catch (err) {
       console.error("Error resetting data:", err);
-      alert('Failed to reset data. Please try again.');
+      alert('Failed to reset data.');
+    }
+  };
+
+  // Add Inventory Item
+  const handleAddInventoryItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !invItemName || !invStockQty || !invItemPrice) return;
+
+    try {
+      const itemId = `item_${Date.now()}`;
+      await setDoc(doc(db, 'inventory', itemId), {
+        userId: user.uid,
+        name: invItemName,
+        stock: parseInt(invStockQty),
+        price: parseFloat(invItemPrice)
+      });
+      setShowInventoryModal(false);
+      setInvItemName('');
+      setInvStockQty('');
+      setInvItemPrice('');
+    } catch (err) {
+      alert('Failed to add item to inventory.');
     }
   };
 
@@ -830,6 +871,15 @@ export default function CashLedgerDashboard() {
             </button>
 
             <button 
+              onClick={() => setActiveTab('inventory')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === 'inventory' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+              }`}
+            >
+              <Package size={16} className="shrink-0" /> <span className="truncate">Inventory & Stock</span>
+            </button>
+
+            <button 
               onClick={() => setActiveTab('reports')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
                 activeTab === 'reports' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
@@ -879,47 +929,56 @@ export default function CashLedgerDashboard() {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-950 text-white flex justify-around items-center border-t border-slate-800 px-1 py-2 shadow-2xl">
         <button 
           onClick={() => setActiveTab('daybook')}
-          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[55px] ${
+          className={`flex flex-col items-center justify-center gap-1 p-1 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
             activeTab === 'daybook' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
-          <BookOpen size={18} className="shrink-0" /> <span className="truncate">Cashbook</span>
+          <BookOpen size={16} className="shrink-0" /> <span className="truncate">Cashbook</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('parties')}
-          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[55px] ${
+          className={`flex flex-col items-center justify-center gap-1 p-1 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
             activeTab === 'parties' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
-          <Users size={18} className="shrink-0" /> <span className="truncate">Parties</span>
+          <Users size={16} className="shrink-0" /> <span className="truncate">Parties</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('invoices')}
-          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[55px] ${
+          className={`flex flex-col items-center justify-center gap-1 p-1 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
             activeTab === 'invoices' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
-          <Receipt size={18} className="shrink-0" /> <span className="truncate">Invoices</span>
+          <Receipt size={16} className="shrink-0" /> <span className="truncate">Invoices</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('inventory')}
+          className={`flex flex-col items-center justify-center gap-1 p-1 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
+            activeTab === 'inventory' ? 'text-sky-400' : 'text-slate-400'
+          }`}
+        >
+          <Package size={16} className="shrink-0" /> <span className="truncate">Stock</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('reports')}
-          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[55px] ${
+          className={`flex flex-col items-center justify-center gap-1 p-1 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
             activeTab === 'reports' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
-          <FileSpreadsheet size={18} className="shrink-0" /> <span className="truncate">Reports</span>
+          <FileSpreadsheet size={16} className="shrink-0" /> <span className="truncate">Reports</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('settings')}
-          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[55px] ${
+          className={`flex flex-col items-center justify-center gap-1 p-1 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
             activeTab === 'settings' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
-          <Settings size={18} className="shrink-0" /> <span className="truncate">Profile</span>
+          <Settings size={16} className="shrink-0" /> <span className="truncate">Profile</span>
         </button>
       </nav>
 
@@ -932,6 +991,7 @@ export default function CashLedgerDashboard() {
                 {activeTab === 'daybook' && 'Cashbook Entries'}
                 {activeTab === 'parties' && 'Customer & Party Ledger'}
                 {activeTab === 'invoices' && 'Tax Invoice Generator'}
+                {activeTab === 'inventory' && 'Inventory & Stock Management'}
                 {activeTab === 'reports' && 'Reports & Statements'}
                 {activeTab === 'settings' && 'Store Profile'}
               </h2>
@@ -951,6 +1011,13 @@ export default function CashLedgerDashboard() {
                 className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all"
               >
                 <Plus size={15} /> Create Tax Invoice {!isPro && <Crown size={12} className="text-amber-300 ml-1" />}
+              </button>
+            ) : activeTab === 'inventory' ? (
+              <button 
+                onClick={() => setShowInventoryModal(true)}
+                className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all"
+              >
+                <Plus size={15} /> Add Stock Item
               </button>
             ) : (
               <>
@@ -1012,6 +1079,16 @@ export default function CashLedgerDashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* LOW STOCK WARNING BANNER IF ANY ITEM < 5 */}
+              {inventory.some(item => item.stock <= 5) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex items-center gap-3 shadow-sm">
+                  <AlertTriangle className="text-amber-600 shrink-0" size={20} />
+                  <div className="flex-1 text-xs text-amber-800 font-medium">
+                    <strong className="font-bold">Low Stock Warning:</strong> Some items in your inventory are running low (5 or fewer units left). Check the Inventory tab to restock.
+                  </div>
+                </div>
+              )}
 
               {/* ANALYTICS CHART SECTION */}
               <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm mb-8">
@@ -1420,6 +1497,84 @@ export default function CashLedgerDashboard() {
             </div>
           )}
 
+          {activeTab === 'inventory' && (
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-base md:text-lg font-bold text-slate-900">Inventory & Stock</h3>
+                  <p className="text-xs text-slate-500 font-semibold">Manage store items and monitor stock levels</p>
+                </div>
+                <button 
+                  onClick={() => setShowInventoryModal(true)}
+                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Plus size={15} /> Add Stock Item
+                </button>
+              </div>
+
+              {inventory.length === 0 ? (
+                <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-2xl">
+                  <Package size={40} className="mx-auto text-slate-300 mb-3" />
+                  <p className="font-bold text-slate-700 text-sm">No Stock Items Added Yet</p>
+                  <button 
+                    onClick={() => setShowInventoryModal(true)}
+                    className="mt-3 bg-sky-600 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
+                  >
+                    + Add Item
+                  </button>
+                </div>
+              ) : (
+                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[600px]">
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-600 text-[10px] uppercase font-black border-b border-slate-200">
+                          <th className="p-3.5">Item Name</th>
+                          <th className="p-3.5">Available Stock</th>
+                          <th className="p-3.5 text-right">Selling Price (Rs.)</th>
+                          <th className="p-3.5 text-center">Status</th>
+                          <th className="p-3.5 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                        {inventory.map((item) => (
+                          <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="p-3.5 font-bold text-slate-900">{item.name}</td>
+                            <td className="p-3.5 font-mono font-bold text-slate-700">{item.stock} units</td>
+                            <td className="p-3.5 text-right font-bold text-slate-800">Rs. {item.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className="p-3.5 text-center">
+                              {item.stock <= 5 ? (
+                                <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-[10px] font-black uppercase inline-flex items-center gap-1">
+                                  <AlertTriangle size={10} /> Low Stock
+                                </span>
+                              ) : (
+                                <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-black uppercase">
+                                  In Stock
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3.5 text-center">
+                              <button 
+                                onClick={async () => {
+                                  if (window.confirm(`Delete ${item.name} from inventory?`)) {
+                                    await deleteDoc(doc(db, 'inventory', item.id));
+                                  }
+                                }}
+                                className="text-rose-500 hover:text-rose-700 p-1 cursor-pointer"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'reports' && (
             <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-1">Download Account Statements</h3>
@@ -1723,6 +1878,71 @@ export default function CashLedgerDashboard() {
                   className="px-5 py-2 text-white bg-sky-600 hover:bg-sky-700 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
                 >
                   Save Party
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Inventory Item Modal */}
+      {showInventoryModal && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
+            <h3 className="text-base font-extrabold uppercase mb-4 text-slate-900 flex items-center gap-2">
+              <Package size={18} className="text-sky-600" /> Add Stock Item
+            </h3>
+            <form onSubmit={handleAddInventoryItem} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Item Name</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={invItemName} 
+                  onChange={(e) => setInvItemName(e.target.value)}
+                  placeholder="e.g. KitKat Chocolate"
+                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Stock Quantity</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    required 
+                    value={invStockQty} 
+                    onChange={(e) => setInvStockQty(e.target.value)}
+                    placeholder="e.g. 20"
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Selling Price (Rs.)</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    required 
+                    value={invItemPrice} 
+                    onChange={(e) => setInvItemPrice(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button 
+                  type="button" 
+                  onClick={() => setShowInventoryModal(false)}
+                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-5 py-2 text-white bg-sky-600 hover:bg-sky-700 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
+                >
+                  Save Item
                 </button>
               </div>
             </form>
