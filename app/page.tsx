@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle, Edit3, Percent 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle, Edit3, Percent, Printer 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
@@ -52,7 +52,7 @@ export default function CashLedgerDashboard() {
 
   // Multi-Item Invoice Form States with GST
   const [invCustomerName, setInvCustomerName] = useState('');
-  const [gstRate, setGstRate] = useState('0'); // '0', '5', '12', '18'
+  const [gstRate, setGstRate] = useState('0');
   const [itemsList, setItemsList] = useState<any[]>([
     { name: '', qty: '1', price: '' }
   ]);
@@ -352,7 +352,6 @@ export default function CashLedgerDashboard() {
     setItemsList(list);
   };
 
-  // CREATE INVOICE WITH GST CALCULATION & AUTO STOCK DEDUCT
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !invCustomerName || itemsList.length === 0) return;
@@ -386,7 +385,6 @@ export default function CashLedgerDashboard() {
 
       await setDoc(doc(db, 'invoices', invId), invoiceData);
 
-      // Auto deduct stock
       for (const soldItem of formattedItems) {
         const matchedInvItem = inventory.find(i => i.name.toLowerCase() === soldItem.name.toLowerCase());
         if (matchedInvItem) {
@@ -404,6 +402,7 @@ export default function CashLedgerDashboard() {
     }
   };
 
+  // STANDARD A4 PDF INVOICE
   const executeDownloadInvoicePDF = async (inv: any) => {
     const { default: jsPDF } = await import('jspdf');
 
@@ -451,7 +450,6 @@ export default function CashLedgerDashboard() {
     doc.setFont('times', 'normal');
     doc.text(inv.customerName, 18, 57);
 
-    // Table Header
     doc.setFillColor(15, 23, 42);
     doc.rect(14, 70, 182, 10, 'F');
     doc.setTextColor(255, 255, 255);
@@ -481,7 +479,6 @@ export default function CashLedgerDashboard() {
     doc.setDrawColor(226, 232, 240);
     doc.line(14, startY + 2, 196, startY + 2);
 
-    // GST Breakdown Box & Grand Total
     const subTot = inv.subTotal || inv.total;
     const gstAmt = inv.gstAmount || 0;
     const gRate = inv.gstRate || 0;
@@ -516,6 +513,83 @@ export default function CashLedgerDashboard() {
     doc.text(`Rs. ${grandTot.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, startY + 10, { align: 'right' });
 
     doc.save(`${inv.invoiceNumber}_${inv.customerName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+  };
+
+  // THERMAL 80MM POS RECEIPT PDF
+  const executeDownloadThermalReceipt = async (inv: any) => {
+    const { default: jsPDF } = await import('jspdf');
+
+    // 80mm width thermal roll format (height dynamic based on items)
+    const itemsCount = (inv.items || []).length;
+    const estimatedHeight = 110 + (itemsCount * 10) + ((inv.gstRate || 0) > 0 ? 20 : 0);
+
+    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, estimatedHeight] });
+    doc.setFont('courier', 'normal');
+
+    let y = 10;
+    doc.setFontSize(11);
+    doc.setFont('courier', 'bold');
+    doc.text(businessName.toUpperCase(), 40, y, { align: 'center' });
+
+    y += 5;
+    doc.setFontSize(8);
+    doc.setFont('courier', 'normal');
+    if (address) { doc.text(address, 40, y, { align: 'center' }); y += 4; }
+    if (phone) { doc.text(`Phone: +91 ${phone}`, 40, y, { align: 'center' }); y += 6; }
+
+    doc.text('----------------------------------------', 40, y, { align: 'center' });
+    y += 4;
+
+    doc.text(`Bill No: ${inv.invoiceNumber}`, 4, y);
+    y += 4;
+    doc.text(`Date: ${new Date(inv.date).toLocaleDateString('en-IN')}`, 4, y);
+    y += 4;
+    doc.text(`Customer: ${inv.customerName}`, 4, y);
+    y += 5;
+
+    doc.text('----------------------------------------', 40, y, { align: 'center' });
+    y += 4;
+
+    doc.text('ITEM          QTY    PRICE    TOTAL', 4, y);
+    y += 4;
+    doc.text('----------------------------------------', 40, y, { align: 'center' });
+    y += 5;
+
+    const itemsArray = inv.items || [];
+    itemsArray.forEach((item: any) => {
+      const nameStr = (item.name || 'Item').substring(0, 12).padEnd(12, ' ');
+      const qtyStr = item.qty.toString().padStart(3, ' ');
+      const priceStr = item.price.toFixed(0).padStart(7, ' ');
+      const totStr = item.total.toFixed(0).padStart(8, ' ');
+
+      doc.text(`${nameStr} ${qtyStr} ${priceStr} ${totStr}`, 4, y);
+      y += 6;
+    });
+
+    doc.text('----------------------------------------', 40, y, { align: 'center' });
+    y += 5;
+
+    const subTot = inv.subTotal || inv.total;
+    const gstAmt = inv.gstAmount || 0;
+    const gRate = inv.gstRate || 0;
+
+    if (gRate > 0) {
+      doc.text(`Subtotal: Rs. ${subTot.toFixed(2)}`, 76, y, { align: 'right' });
+      y += 4;
+      doc.text(`GST (${gRate}%): Rs. ${gstAmt.toFixed(2)}`, 76, y, { align: 'right' });
+      y += 5;
+    }
+
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(10);
+    doc.text(`GRAND TOTAL: Rs. ${inv.total.toFixed(2)}`, 76, y, { align: 'right' });
+    y += 8;
+
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(8);
+    doc.text('Thank You! Visit Again.', 40, y, { align: 'center' });
+
+    doc.save(`${inv.invoiceNumber}_ThermalReceipt.pdf`);
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -1130,7 +1204,6 @@ export default function CashLedgerDashboard() {
                 </div>
               </div>
 
-              {/* LOW STOCK WARNING BANNER IF ANY ITEM < 5 */}
               {inventory.some(item => item.stock <= 5) && (
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex items-center gap-3 shadow-sm">
                   <AlertTriangle className="text-amber-600 shrink-0" size={20} />
@@ -1490,7 +1563,7 @@ export default function CashLedgerDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
                 <div>
                   <h3 className="text-base md:text-lg font-bold text-slate-900">Tax Invoices</h3>
-                  <p className="text-xs text-slate-500 font-semibold">Generate and download customer billing invoices</p>
+                  <p className="text-xs text-slate-500 font-semibold">Generate and download standard A4 or thermal POS receipts</p>
                 </div>
               </div>
 
@@ -1516,7 +1589,7 @@ export default function CashLedgerDashboard() {
                           <th className="p-3.5">Customer Name</th>
                           <th className="p-3.5">Items Summary</th>
                           <th className="p-3.5 text-right">Total Amount</th>
-                          <th className="p-3.5 text-center">Action</th>
+                          <th className="p-3.5 text-center">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-xs font-medium">
@@ -1529,12 +1602,20 @@ export default function CashLedgerDashboard() {
                               {inv.items ? `${inv.items.length} item(s)` : `${inv.itemName} (Qty: ${inv.quantity})`}
                             </td>
                             <td className="p-3.5 text-right font-black text-emerald-600">Rs. {inv.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                            <td className="p-3.5 text-center">
+                            <td className="p-3.5 text-center flex items-center justify-center gap-2">
                               <button 
                                 onClick={() => handleProAction(() => executeDownloadInvoicePDF(inv))}
-                                className="bg-slate-900 hover:bg-sky-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                                title="Download A4 PDF"
+                                className="bg-slate-900 hover:bg-sky-600 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-1 transition-all cursor-pointer shadow-sm"
                               >
-                                <Download size={12} /> PDF
+                                <Download size={11} /> A4
+                              </button>
+                              <button 
+                                onClick={() => handleProAction(() => executeDownloadThermalReceipt(inv))}
+                                title="Download 80mm Thermal Receipt"
+                                className="bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                              >
+                                <Printer size={11} /> Thermal
                               </button>
                             </td>
                           </tr>
