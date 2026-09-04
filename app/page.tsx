@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle, Edit3 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle, Edit3, Percent 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
@@ -50,8 +50,9 @@ export default function CashLedgerDashboard() {
   const [invStockQty, setInvStockQty] = useState('');
   const [invItemPrice, setInvItemPrice] = useState('');
 
-  // Multi-Item Invoice Form States
+  // Multi-Item Invoice Form States with GST
   const [invCustomerName, setInvCustomerName] = useState('');
+  const [gstRate, setGstRate] = useState('0'); // '0', '5', '12', '18'
   const [itemsList, setItemsList] = useState<any[]>([
     { name: '', qty: '1', price: '' }
   ]);
@@ -209,21 +210,18 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // Add or Update Inventory Item
   const handleSaveInventoryItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !invItemName || !invStockQty || !invItemPrice) return;
 
     try {
       if (editingItem) {
-        // Update existing item
         await updateDoc(doc(db, 'inventory', editingItem.id), {
           name: invItemName,
           stock: parseInt(invStockQty),
           price: parseFloat(invItemPrice)
         });
       } else {
-        // Create new item
         const itemId = `item_${Date.now()}`;
         await setDoc(doc(db, 'inventory', itemId), {
           userId: user.uid,
@@ -337,7 +335,6 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // Multi-Item Handlers
   const handleAddItemRow = () => {
     setItemsList([...itemsList, { name: '', qty: '1', price: '' }]);
   };
@@ -355,47 +352,52 @@ export default function CashLedgerDashboard() {
     setItemsList(list);
   };
 
-  // CREATE INVOICE & AUTOMATICALLY DEDUCT STOCK FROM INVENTORY
+  // CREATE INVOICE WITH GST CALCULATION & AUTO STOCK DEDUCT
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !invCustomerName || itemsList.length === 0) return;
 
     try {
       const invId = `inv_${Date.now()}`;
-      let grandTotal = 0;
+      let subTotal = 0;
       const formattedItems = itemsList.map(item => {
         const q = parseInt(item.qty || '1');
         const p = parseFloat(item.price || '0');
         const tot = q * p;
-        grandTotal += tot;
+        subTotal += tot;
         return { name: item.name, qty: q, price: p, total: tot };
       });
+
+      const gstPercentage = parseFloat(gstRate);
+      const gstAmount = (subTotal * gstPercentage) / 100;
+      const grandTotal = subTotal + gstAmount;
 
       const invoiceData = {
         userId: user.uid,
         invoiceNumber: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
         customerName: invCustomerName,
         items: formattedItems,
+        subTotal,
+        gstRate: gstPercentage,
+        gstAmount,
         total: grandTotal,
         date: new Date().toISOString()
       };
 
-      // Save Invoice
       await setDoc(doc(db, 'invoices', invId), invoiceData);
 
-      // Auto deduct from inventory if item matches
+      // Auto deduct stock
       for (const soldItem of formattedItems) {
         const matchedInvItem = inventory.find(i => i.name.toLowerCase() === soldItem.name.toLowerCase());
         if (matchedInvItem) {
           const newStock = Math.max(0, matchedInvItem.stock - soldItem.qty);
-          await updateDoc(doc(db, 'inventory', matchedInvItem.id), {
-            stock: newStock
-          });
+          await updateDoc(doc(db, 'inventory', matchedInvItem.id), { stock: newStock });
         }
       }
 
       setShowInvoiceModal(false);
       setInvCustomerName('');
+      setGstRate('0');
       setItemsList([{ name: '', qty: '1', price: '' }]);
     } catch (err) {
       alert('Failed to create invoice.');
@@ -460,7 +462,6 @@ export default function CashLedgerDashboard() {
     doc.text('PRICE (RS.)', 135, 76);
     doc.text('TOTAL (RS.)', 180, 76, { align: 'right' });
 
-    // Multi-Item Loop Renderer
     let startY = 88;
     const itemsArray = inv.items || [{ name: inv.itemName, qty: inv.quantity, price: inv.price, total: inv.total }];
 
@@ -480,15 +481,39 @@ export default function CashLedgerDashboard() {
     doc.setDrawColor(226, 232, 240);
     doc.line(14, startY + 2, 196, startY + 2);
 
-    // Grand Total Box
+    // GST Breakdown Box & Grand Total
+    const subTot = inv.subTotal || inv.total;
+    const gstAmt = inv.gstAmount || 0;
+    const gRate = inv.gstRate || 0;
+    const grandTot = inv.total;
+
+    startY += 8;
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(9);
+
+    if (gRate > 0) {
+      doc.text(`Subtotal:`, 140, startY);
+      doc.text(`Rs. ${subTot.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, startY, { align: 'right' });
+      startY += 6;
+
+      const halfGst = gstAmt / 2;
+      doc.text(`CGST (${gRate / 2}%):`, 140, startY);
+      doc.text(`Rs. ${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, startY, { align: 'right' });
+      startY += 6;
+
+      doc.text(`SGST (${gRate / 2}%):`, 140, startY);
+      doc.text(`Rs. ${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, startY, { align: 'right' });
+      startY += 8;
+    }
+
     doc.setFillColor(240, 249, 255);
-    doc.roundedRect(130, startY + 8, 66, 16, 2, 2, 'FD');
+    doc.roundedRect(125, startY, 71, 16, 2, 2, 'FD');
     doc.setTextColor(3, 105, 161);
     doc.setFontSize(9);
     doc.setFont('times', 'bold');
-    doc.text('GRAND TOTAL:', 134, startY + 16);
-    doc.setFontSize(12);
-    doc.text(`Rs. ${inv.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, startY + 16, { align: 'right' });
+    doc.text('GRAND TOTAL:', 130, startY + 10);
+    doc.setFontSize(11);
+    doc.text(`Rs. ${grandTot.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, startY + 10, { align: 'right' });
 
     doc.save(`${inv.invoiceNumber}_${inv.customerName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   };
@@ -1989,24 +2014,39 @@ export default function CashLedgerDashboard() {
         </div>
       )}
 
-      {/* Create Multi-Item Invoice Modal */}
+      {/* Create Multi-Item Invoice Modal with GST Selection */}
       {showInvoiceModal && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 max-h-[90vh] overflow-y-auto">
             <h3 className="text-base font-extrabold uppercase mb-4 text-slate-900 flex items-center gap-2">
-              <Receipt size={18} className="text-sky-600" /> Create Tax Invoice
+              <Receipt size={18} className="text-sky-600" /> Create Tax Invoice with GST
             </h3>
             <form onSubmit={handleCreateInvoice} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Customer Name</label>
-                <input 
-                  type="text" 
-                  required 
-                  value={invCustomerName} 
-                  onChange={(e) => setInvCustomerName(e.target.value)}
-                  placeholder="Enter customer name"
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Customer Name</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={invCustomerName} 
+                    onChange={(e) => setInvCustomerName(e.target.value)}
+                    placeholder="Enter customer name"
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">GST Rate (%)</label>
+                  <select 
+                    value={gstRate} 
+                    onChange={(e) => setGstRate(e.target.value)}
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white"
+                  >
+                    <option value="0">0% GST (No Tax)</option>
+                    <option value="5">5% GST (2.5% CGST + 2.5% SGST)</option>
+                    <option value="12">12% GST (6% CGST + 6% SGST)</option>
+                    <option value="18">18% GST (9% CGST + 9% SGST)</option>
+                  </select>
+                </div>
               </div>
 
               <div className="space-y-3 pt-2">
