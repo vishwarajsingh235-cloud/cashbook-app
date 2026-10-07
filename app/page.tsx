@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle, Edit3, Percent, Printer, Moon, Sun, Lock, ShieldCheck 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle, Edit3, Percent, Printer, Moon, Sun, Lock, ShieldCheck, Zap 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
@@ -149,7 +149,7 @@ export default function CashLedgerDashboard() {
         }
         if (p.appPin) {
           setUserPin(p.appPin);
-          setIsLocked(true); // Lock app if PIN exists
+          setIsLocked(true);
         }
       } else {
         setBusinessName(user.displayName || 'My Business');
@@ -190,7 +190,6 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // Set or Update Security PIN
   const handleSavePin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || newPinInput.length !== 4) {
@@ -212,7 +211,6 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // Remove Security PIN
   const handleRemovePin = async () => {
     if (!user || !window.confirm("Are you sure you want to remove the security PIN lock?")) return;
 
@@ -228,7 +226,6 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // Unlock App
   const handleUnlockApp = (e: React.FormEvent) => {
     e.preventDefault();
     if (enteredPin === userPin) {
@@ -332,9 +329,9 @@ export default function CashLedgerDashboard() {
   const netBalance = totalCashIn - totalCashOut;
 
   const chartData = [
-    { name: 'Total In', amount: totalCashIn, fill: '#16a34a' },
-    { name: 'Total Out', amount: totalCashOut, fill: '#dc2626' },
-    { name: 'Net Balance', amount: Math.abs(netBalance), fill: '#0284c7' }
+    { name: 'Total In', amount: totalCashIn, fill: '#10b981' },
+    { name: 'Total Out', amount: totalCashOut, fill: '#f43f5e' },
+    { name: 'Net Balance', amount: Math.abs(netBalance), fill: '#0ea5e9' }
   ];
 
   const partyTransactions = selectedParty 
@@ -956,34 +953,35 @@ export default function CashLedgerDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-100 flex justify-center items-center text-slate-700 font-medium text-xs">
-        Loading session...
+      <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center text-slate-400 font-medium text-xs space-y-3">
+        <div className="w-8 h-8 border-2 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
+        <span>Loading CashLedger v2.0...</span>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-100 flex flex-col justify-center items-center p-4 font-sans antialiased">
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-8 max-w-sm w-full shadow-sm text-center space-y-6">
+      <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 font-sans antialiased text-white">
+        <div className="bg-slate-900 border border-slate-800/80 rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-6">
           <div className="flex justify-center items-center gap-2.5">
-            <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+            <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 shadow-lg">
               <rect width="100" height="100" rx="26" fill="#18181B"/>
               <rect x="10" y="10" width="80" height="80" rx="20" stroke="#27272A" strokeWidth="2"/>
               <text x="46" y="63" fontFamily="Arial, sans-serif" fontWeight="900" fontSize="44" fill="#F4F4F5" textAnchor="middle" letterSpacing="-3">CL</text>
               <circle cx="74" cy="28" r="5" fill="#22C55E"/>
             </svg>
-            <span className="font-extrabold text-slate-900 text-lg tracking-tight uppercase">CashLedger</span>
+            <span className="font-extrabold text-white text-xl tracking-tight uppercase">CashLedger</span>
           </div>
 
           <div className="space-y-1">
-            <h1 className="text-xl font-bold text-slate-900">Sign in to your account</h1>
-            <p className="text-xs text-slate-500 font-medium">Access your daily cashbook and customer balances</p>
+            <h1 className="text-xl font-bold text-white">Sign in to your account</h1>
+            <p className="text-xs text-slate-400 font-medium">Access your daily cashbook and customer balances</p>
           </div>
 
           <button 
             onClick={handleGoogleLogin}
-            className="w-full bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-3 border border-slate-300 shadow-sm cursor-pointer transition-all"
+            className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3 px-4 rounded-2xl text-xs flex items-center justify-center gap-3 border border-slate-700 shadow-sm cursor-pointer transition-all"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" className="shrink-0">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -994,8 +992,8 @@ export default function CashLedgerDashboard() {
             Continue with Google
           </button>
 
-          <div className="pt-2 border-t border-slate-100">
-            <p className="text-[11px] text-slate-400 font-medium">By continuing, your data syncs securely with your account.</p>
+          <div className="pt-2 border-t border-slate-800">
+            <p className="text-[11px] text-slate-500 font-medium">By continuing, your data syncs securely with your account.</p>
           </div>
         </div>
       </div>
@@ -1006,7 +1004,7 @@ export default function CashLedgerDashboard() {
   if (isLocked) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 font-sans antialiased text-white">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center space-y-6">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-6">
           <div className="w-16 h-16 bg-sky-500/10 text-sky-400 rounded-2xl mx-auto flex items-center justify-center border border-sky-500/20">
             <Lock size={30} />
           </div>
@@ -1024,11 +1022,11 @@ export default function CashLedgerDashboard() {
               value={enteredPin}
               onChange={(e) => setEnteredPin(e.target.value)}
               placeholder="••••"
-              className="w-full text-center tracking-[1em] text-2xl border border-slate-700 bg-slate-800 rounded-xl py-3 focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
+              className="w-full text-center tracking-[1em] text-2xl border border-slate-700 bg-slate-800 rounded-2xl py-3.5 focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
             />
             <button 
               type="submit"
-              className="w-full bg-sky-600 hover:bg-sky-500 text-white font-extrabold py-3 rounded-xl text-xs uppercase tracking-wider shadow-lg cursor-pointer transition-all"
+              className="w-full bg-sky-600 hover:bg-sky-500 text-white font-extrabold py-3.5 rounded-2xl text-xs uppercase tracking-wider shadow-lg cursor-pointer transition-all"
             >
               Unlock App
             </button>
@@ -1051,7 +1049,7 @@ export default function CashLedgerDashboard() {
         [data-nextjs-toast], [data-nextjs-dialog-overlay], #nextjs-dev-indicator { display: none !important; }
       `}</style>
 
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar v2.0 */}
       <aside className={`hidden md:flex w-64 flex-col justify-between border-r shrink-0 transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-slate-950 border-slate-800 text-white'}`}>
         <div>
           <div className="p-6 border-b border-slate-800/80">
@@ -1065,7 +1063,10 @@ export default function CashLedgerDashboard() {
                 </svg>
                 <div>
                   <h1 className="text-lg font-black tracking-tight text-white uppercase">CashLedger</h1>
-                  <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Business Cashbook</p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <p className="text-[10px] text-slate-400 font-bold tracking-wider uppercase">v2.0 POS</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1074,8 +1075,8 @@ export default function CashLedgerDashboard() {
           <nav className="p-4 space-y-1.5">
             <button 
               onClick={() => setActiveTab('daybook')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
-                activeTab === 'daybook' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === 'daybook' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/25' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
               <BookOpen size={16} className="shrink-0" /> <span className="truncate">Cashbook</span>
@@ -1083,8 +1084,8 @@ export default function CashLedgerDashboard() {
 
             <button 
               onClick={() => setActiveTab('parties')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
-                activeTab === 'parties' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === 'parties' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/25' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
               <Users size={16} className="shrink-0" /> <span className="truncate">Parties</span>
@@ -1092,8 +1093,8 @@ export default function CashLedgerDashboard() {
 
             <button 
               onClick={() => setActiveTab('invoices')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
-                activeTab === 'invoices' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === 'invoices' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/25' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
               <Receipt size={16} className="shrink-0" /> <span className="truncate">Invoices</span>
@@ -1101,8 +1102,8 @@ export default function CashLedgerDashboard() {
 
             <button 
               onClick={() => setActiveTab('inventory')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
-                activeTab === 'inventory' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === 'inventory' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/25' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
               <Package size={16} className="shrink-0" /> <span className="truncate">Inventory & Stock</span>
@@ -1110,8 +1111,8 @@ export default function CashLedgerDashboard() {
 
             <button 
               onClick={() => setActiveTab('reports')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
-                activeTab === 'reports' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === 'reports' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/25' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
               <FileSpreadsheet size={16} className="shrink-0" /> <span className="truncate">Reports</span>
@@ -1119,36 +1120,35 @@ export default function CashLedgerDashboard() {
 
             <button 
               onClick={() => setActiveTab('settings')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
-                activeTab === 'settings' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === 'settings' ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/25' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
             >
-              <Settings size={16} className="shrink-0" /> <span className="truncate">Profile</span>
+              <Settings size={16} className="shrink-0" /> <span className="truncate">Profile & Security</span>
             </button>
           </nav>
         </div>
 
-        <div className="p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-3">
+        <div className="p-4 m-4 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-3 shadow-inner">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="min-w-0 pr-2">
               <div className="text-xs font-bold text-white truncate">{businessName}</div>
               <div className="text-[10px] text-slate-400 font-semibold truncate">{user?.email}</div>
             </div>
             {isPro ? (
-              <span className="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-black text-[9px] flex items-center gap-1 border border-amber-500/30">
+              <span className="bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-xl font-black text-[9px] flex items-center gap-1 border border-amber-500/30 shrink-0">
                 <Crown size={11} /> PRO
               </span>
             ) : (
-              <button onClick={() => setShowUpgradeModal(true)} className="bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded font-bold text-[9px] hover:bg-sky-500/30 cursor-pointer">
+              <button onClick={() => setShowUpgradeModal(true)} className="bg-sky-500/20 text-sky-400 px-2.5 py-1 rounded-xl font-bold text-[9px] hover:bg-sky-500/30 cursor-pointer shrink-0">
                 UPGRADE
               </button>
             )}
           </div>
 
-          {/* Dark Mode Toggle Button */}
           <button 
             onClick={() => setDarkMode(!darkMode)}
-            className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-xl text-[11px] font-bold uppercase flex items-center justify-center gap-2 cursor-pointer transition-all border border-slate-700"
+            className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-2.5 rounded-xl text-[11px] font-bold uppercase flex items-center justify-center gap-2 cursor-pointer transition-all border border-slate-700 shadow-sm"
           >
             {darkMode ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} className="text-sky-400" />}
             {darkMode ? 'Light Mode' : 'Dark Mode'}
@@ -1156,7 +1156,7 @@ export default function CashLedgerDashboard() {
 
           <button 
             onClick={handleLogout}
-            className="w-full bg-slate-800 hover:bg-rose-900/40 hover:text-rose-400 text-slate-300 py-2 rounded-xl text-[11px] font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+            className="w-full bg-slate-800 hover:bg-rose-900/40 hover:text-rose-400 text-slate-300 py-2.5 rounded-xl text-[11px] font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer transition-all border border-slate-700/50"
           >
             <LogOut size={13} /> Sign Out
           </button>
@@ -1164,10 +1164,10 @@ export default function CashLedgerDashboard() {
       </aside>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center border-t px-1 py-2 shadow-2xl transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-slate-950 border-slate-800 text-white'}`}>
+      <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center border-t px-1 py-2.5 shadow-2xl transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-slate-950 border-slate-800 text-white'}`}>
         <button 
           onClick={() => setActiveTab('daybook')}
-          className={`flex flex-col items-center justify-center gap-1 p-1 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
+          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
             activeTab === 'daybook' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
@@ -1176,7 +1176,7 @@ export default function CashLedgerDashboard() {
 
         <button 
           onClick={() => setActiveTab('parties')}
-          className={`flex flex-col items-center justify-center gap-1 p-1 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
+          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
             activeTab === 'parties' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
@@ -1185,7 +1185,7 @@ export default function CashLedgerDashboard() {
 
         <button 
           onClick={() => setActiveTab('invoices')}
-          className={`flex flex-col items-center justify-center gap-1 p-1 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
+          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
             activeTab === 'invoices' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
@@ -1194,7 +1194,7 @@ export default function CashLedgerDashboard() {
 
         <button 
           onClick={() => setActiveTab('inventory')}
-          className={`flex flex-col items-center justify-center gap-1 p-1 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
+          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
             activeTab === 'inventory' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
@@ -1203,7 +1203,7 @@ export default function CashLedgerDashboard() {
 
         <button 
           onClick={() => setActiveTab('reports')}
-          className={`flex flex-col items-center justify-center gap-1 p-1 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
+          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
             activeTab === 'reports' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
@@ -1212,7 +1212,7 @@ export default function CashLedgerDashboard() {
 
         <button 
           onClick={() => setActiveTab('settings')}
-          className={`flex flex-col items-center justify-center gap-1 p-1 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
+          className={`flex flex-col items-center justify-center gap-1 p-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
             activeTab === 'settings' ? 'text-sky-400' : 'text-slate-400'
           }`}
         >
@@ -1246,14 +1246,14 @@ export default function CashLedgerDashboard() {
             {activeTab === 'invoices' ? (
               <button 
                 onClick={() => handleProAction(() => setShowInvoiceModal(true))}
-                className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all"
+                className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all"
               >
                 <Plus size={15} /> Create Tax Invoice {!isPro && <Crown size={12} className="text-amber-300 ml-1" />}
               </button>
             ) : activeTab === 'inventory' ? (
               <button 
                 onClick={() => { setEditingItem(null); setInvItemName(''); setInvStockQty(''); setInvItemPrice(''); setShowInventoryModal(true); }}
-                className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all"
+                className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all"
               >
                 <Plus size={15} /> Add Stock Item
               </button>
@@ -1261,13 +1261,13 @@ export default function CashLedgerDashboard() {
               <>
                 <button 
                   onClick={() => { setTxnType('CASH_IN'); setCategory('Sales'); setShowModal(true); }}
-                  className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
+                  className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
                 >
                   <Plus size={15} /> Cash In
                 </button>
                 <button 
                   onClick={() => { setTxnType('CASH_OUT'); setCategory('Rent'); setShowModal(true); }}
-                  className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
+                  className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all"
                 >
                   <Minus size={15} /> Cash Out
                 </button>
@@ -1279,40 +1279,40 @@ export default function CashLedgerDashboard() {
         <main className="p-4 md:p-8 flex-1 overflow-y-auto">
           {activeTab === 'daybook' && (
             <>
-              {/* Summary Cards */}
+              {/* Summary Cards v2.0 */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-6">
-                <div className={`p-5 md:p-6 rounded-2xl border shadow-sm flex items-center justify-between transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
+                <div className={`p-5 md:p-6 rounded-3xl border shadow-sm flex items-center justify-between transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
                   <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Cash In</p>
                     <h3 className="text-2xl md:text-3xl font-black text-emerald-500 mt-1">
                       Rs. {totalCashIn.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
                   </div>
-                  <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-2xl border border-emerald-500/20">
+                  <div className="p-3.5 bg-emerald-500/10 text-emerald-500 rounded-2xl border border-emerald-500/20">
                     <ArrowDownRight size={22} />
                   </div>
                 </div>
 
-                <div className={`p-5 md:p-6 rounded-2xl border shadow-sm flex items-center justify-between transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
+                <div className={`p-5 md:p-6 rounded-3xl border shadow-sm flex items-center justify-between transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
                   <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Cash Out</p>
                     <h3 className="text-2xl md:text-3xl font-black text-rose-500 mt-1">
                       Rs. {totalCashOut.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
                   </div>
-                  <div className="p-3 bg-rose-500/10 text-rose-500 rounded-2xl border border-rose-500/20">
+                  <div className="p-3.5 bg-rose-500/10 text-rose-500 rounded-2xl border border-rose-500/20">
                     <ArrowUpRight size={22} />
                   </div>
                 </div>
 
-                <div className={`p-5 md:p-6 rounded-2xl border shadow-sm flex items-center justify-between transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
+                <div className={`p-5 md:p-6 rounded-3xl border shadow-sm flex items-center justify-between transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
                   <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Net Balance</p>
                     <h3 className={`text-2xl md:text-3xl font-black mt-1 ${netBalance >= 0 ? 'text-sky-400' : 'text-rose-500'}`}>
                       Rs. {netBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
                   </div>
-                  <div className="p-3 bg-sky-500/10 text-sky-400 rounded-2xl border border-sky-500/20">
+                  <div className="p-3.5 bg-sky-500/10 text-sky-400 rounded-2xl border border-sky-500/20">
                     <Wallet size={22} />
                   </div>
                 </div>
@@ -1327,8 +1327,8 @@ export default function CashLedgerDashboard() {
                 </div>
               )}
 
-              {/* ANALYTICS CHART SECTION */}
-              <div className={`p-6 rounded-2xl border shadow-sm mb-8 transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
+              {/* ANALYTICS CHART SECTION v2.0 */}
+              <div className={`p-6 rounded-3xl border shadow-sm mb-8 transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <TrendingUp size={18} className="text-sky-400" />
@@ -1349,8 +1349,8 @@ export default function CashLedgerDashboard() {
                 </div>
               </div>
 
-              {/* DATE FILTER & SEARCH BAR */}
-              <div className={`rounded-2xl border shadow-sm overflow-hidden mb-6 transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
+              {/* DATE FILTER & SEARCH BAR v2.0 */}
+              <div className={`rounded-3xl border shadow-sm overflow-hidden mb-6 transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
                 <div className={`p-4 md:p-5 border-b flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors ${darkMode ? 'bg-slate-900/70 border-slate-800' : 'bg-slate-50/70 border-slate-200/80'}`}>
                   <div className="flex items-center gap-3">
                     <h3 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-slate-900'}`}>Transactions Ledger</h3>
@@ -1360,7 +1360,7 @@ export default function CashLedgerDashboard() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
-                    <div className={`flex items-center gap-2 border rounded-xl px-3 py-1.5 shadow-sm transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'}`}>
+                    <div className={`flex items-center gap-2 border rounded-2xl px-3.5 py-2 shadow-sm transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'}`}>
                       <Calendar size={14} className="text-slate-400 shrink-0" />
                       <span className="text-[10px] font-bold uppercase text-slate-400">From:</span>
                       <input 
@@ -1371,7 +1371,7 @@ export default function CashLedgerDashboard() {
                       />
                     </div>
 
-                    <div className={`flex items-center gap-2 border rounded-xl px-3 py-1.5 shadow-sm transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'}`}>
+                    <div className={`flex items-center gap-2 border rounded-2xl px-3.5 py-2 shadow-sm transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'}`}>
                       <Calendar size={14} className="text-slate-400 shrink-0" />
                       <span className="text-[10px] font-bold uppercase text-slate-400">To:</span>
                       <input 
@@ -1392,13 +1392,13 @@ export default function CashLedgerDashboard() {
                     )}
 
                     <div className="relative w-full sm:w-auto">
-                      <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
+                      <Search size={15} className="absolute left-3.5 top-3 text-slate-400" />
                       <input 
                         type="text" 
                         placeholder="Search entries..." 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className={`pl-9 pr-4 py-1.5 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-semibold w-full sm:w-56 shadow-sm transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
+                        className={`pl-10 pr-4 py-2 text-xs border rounded-2xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-semibold w-full sm:w-56 shadow-sm transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
                       />
                     </div>
                   </div>
@@ -1434,18 +1434,18 @@ export default function CashLedgerDashboard() {
                               <td className={`p-4 font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                                 {p ? (
                                   <span className="inline-flex items-center gap-1.5">
-                                    <span className="text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded text-xs border border-sky-500/20">{p.name}</span>
+                                    <span className="text-sky-400 bg-sky-500/10 px-2.5 py-1 rounded-xl text-xs border border-sky-500/20">{p.name}</span>
                                     <span>{t.remarks}</span>
                                   </span>
                                 ) : (t.remarks || 'Cash Transaction')}
                               </td>
                               <td className="p-4">
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl text-[10px] font-black uppercase tracking-wider">
                                   <Tag size={10} /> {t.category || 'General'}
                                 </span>
                               </td>
                               <td className="p-4">
-                                <span className={`px-2 py-1 border rounded-md text-[10px] font-black uppercase tracking-wider ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                                <span className={`px-2.5 py-1 border rounded-xl text-[10px] font-black uppercase tracking-wider ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
                                   {t.payment_mode}
                                 </span>
                               </td>
@@ -1467,7 +1467,7 @@ export default function CashLedgerDashboard() {
           )}
 
           {activeTab === 'parties' && (
-            <div className={`rounded-2xl border p-4 md:p-6 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
+            <div className={`rounded-3xl border p-4 md:p-6 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-4">
                 <div>
                   <h3 className="text-base md:text-lg font-bold">Party Accounts</h3>
@@ -1475,19 +1475,19 @@ export default function CashLedgerDashboard() {
                 </div>
                 <button 
                   onClick={() => setShowAddPartyModal(true)}
-                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center justify-center gap-2"
+                  className="bg-sky-600 hover:bg-sky-700 text-white px-4.5 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center justify-center gap-2"
                 >
                   <UserPlus size={15} /> Add Party Account
                 </button>
               </div>
 
               {parties.length === 0 ? (
-                <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-2xl">
+                <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-3xl">
                   <Users size={40} className="mx-auto text-slate-600 mb-3" />
                   <p className="font-bold text-slate-400 text-sm">No Party Accounts Added</p>
                   <button 
                     onClick={() => setShowAddPartyModal(true)}
-                    className="mt-3 bg-sky-600 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
+                    className="mt-3 bg-sky-600 text-white px-4 py-2 rounded-2xl font-bold text-xs uppercase shadow-md cursor-pointer"
                   >
                     + Add Party
                   </button>
@@ -1497,13 +1497,13 @@ export default function CashLedgerDashboard() {
                   {/* Left Column */}
                   <div className="w-full md:w-80 shrink-0 space-y-3 border-b md:border-b-0 md:border-r border-slate-800 pb-4 md:pb-0 md:pr-4">
                     <div className="relative">
-                      <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+                      <Search size={14} className="absolute left-3.5 top-3 text-slate-400" />
                       <input 
                         type="text" 
                         placeholder="Search party..." 
                         value={partySearchTerm}
                         onChange={(e) => setPartySearchTerm(e.target.value)}
-                        className={`pl-8 pr-3 py-2 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium w-full shadow-sm transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                        className={`pl-10 pr-3 py-2 text-xs border rounded-2xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium w-full shadow-sm transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                       />
                     </div>
 
@@ -1521,7 +1521,7 @@ export default function CashLedgerDashboard() {
                             <div 
                               key={p.id}
                               onClick={() => setSelectedParty(p)}
-                              className={`p-3.5 rounded-xl border transition-all cursor-pointer flex justify-between items-center ${
+                              className={`p-4 rounded-2xl border transition-all cursor-pointer flex justify-between items-center ${
                                 selectedParty && selectedParty.id === p.id 
                                   ? 'border-sky-500 bg-sky-500/10 shadow-sm' 
                                   : darkMode ? 'border-slate-800 hover:bg-slate-800/50' : 'border-slate-200/80 hover:bg-slate-50'
@@ -1550,16 +1550,16 @@ export default function CashLedgerDashboard() {
                   <div className="flex-1 min-w-0">
                     {selectedParty ? (
                       <div className="space-y-4">
-                        <div className="bg-slate-950 text-white p-4 md:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md border border-slate-800">
+                        <div className="bg-slate-950 text-white p-5 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md border border-slate-800">
                           <div className="flex items-center justify-between sm:justify-start gap-2.5 w-full sm:w-auto">
-                            <div className="flex items-center gap-2 min-w-0">
+                            <div className="flex items-center gap-2.5 min-w-0">
                               <UserCheck size={18} className="text-sky-400 shrink-0" />
                               <h3 className="text-base md:text-lg font-black truncate">{selectedParty.name}</h3>
                               
                               <button 
                                 onClick={() => handleProAction(executeWhatsAppReminder)}
                                 title="Send WhatsApp Payment Reminder (PRO)"
-                                className="relative bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded-xl transition-all cursor-pointer shadow-sm flex items-center justify-center shrink-0"
+                                className="relative bg-emerald-600 hover:bg-emerald-500 text-white p-2.5 rounded-2xl transition-all cursor-pointer shadow-sm flex items-center justify-center shrink-0"
                               >
                                 <MessageCircle size={15} />
                                 {!isPro && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border border-slate-950"></span>}
@@ -1568,7 +1568,7 @@ export default function CashLedgerDashboard() {
                               <button 
                                 onClick={() => handleProAction(executeDownloadPartyPDF)}
                                 title="Download Party Statement PDF (PRO)"
-                                className="relative bg-slate-800 hover:bg-sky-600 text-slate-300 hover:text-white p-2 rounded-xl transition-all cursor-pointer border border-slate-700 shadow-sm flex items-center justify-center shrink-0"
+                                className="relative bg-slate-800 hover:bg-sky-600 text-slate-300 hover:text-white p-2.5 rounded-2xl transition-all cursor-pointer border border-slate-700 shadow-sm flex items-center justify-center shrink-0"
                               >
                                 <Download size={15} />
                                 {!isPro && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border border-slate-950"></span>}
@@ -1581,13 +1581,13 @@ export default function CashLedgerDashboard() {
                             <h4 className={`text-lg md:text-xl font-black ${partyBalance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                               Rs. {Math.abs(partyBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </h4>
-                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-300 inline-block mt-1">
+                            <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-xl bg-slate-800 text-slate-300 inline-block mt-1">
                               {partyBalance >= 0 ? 'You Get (+ In)' : 'You Give (- Out)'}
                             </span>
                           </div>
                         </div>
 
-                        <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${darkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${darkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
                           <div>
                             <h4 className={`font-bold text-xs ${darkMode ? 'text-white' : 'text-slate-900'}`}>Record Entry for {selectedParty.name}</h4>
                             <p className="text-[10px] text-slate-400">Add transaction directly to account</p>
@@ -1595,20 +1595,20 @@ export default function CashLedgerDashboard() {
                           <div className="flex items-center gap-2 w-full sm:w-auto">
                             <button 
                               onClick={() => { setTxnType('CASH_IN'); setCategory('Sales'); setShowModal(true); }}
-                              className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                              className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all"
                             >
                               <Plus size={14} /> Received
                             </button>
                             <button 
                               onClick={() => { setTxnType('CASH_OUT'); setCategory('General Expense'); setShowModal(true); }}
-                              className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                              className="flex-1 sm:flex-none bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all"
                             >
                               <Minus size={14} /> Given
                             </button>
                           </div>
                         </div>
 
-                        <div className={`border rounded-xl overflow-hidden shadow-sm transition-colors ${darkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
+                        <div className={`border rounded-2xl overflow-hidden shadow-sm transition-colors ${darkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
                           <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse min-w-[600px]">
                               <thead>
@@ -1636,12 +1636,12 @@ export default function CashLedgerDashboard() {
                                       </td>
                                       <td className={`p-3 font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{t.remarks}</td>
                                       <td className="p-3">
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded text-[9px] font-black uppercase">
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl text-[9px] font-black uppercase">
                                           <Tag size={9} /> {t.category || 'General'}
                                         </span>
                                       </td>
                                       <td className="p-3">
-                                        <span className={`px-2 py-0.5 border rounded text-[9px] font-bold ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                                        <span className={`px-2.5 py-1 border rounded-xl text-[9px] font-bold ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
                                           {t.payment_mode}
                                         </span>
                                       </td>
@@ -1660,7 +1660,7 @@ export default function CashLedgerDashboard() {
                         </div>
                       </div>
                     ) : (
-                      <div className="text-center py-16 text-slate-400 font-medium border-2 border-dashed border-slate-800 rounded-2xl text-xs">
+                      <div className="text-center py-16 text-slate-400 font-medium border-2 border-dashed border-slate-800 rounded-3xl text-xs">
                         Select a party from the list to view entries.
                       </div>
                     )}
@@ -1671,7 +1671,7 @@ export default function CashLedgerDashboard() {
           )}
 
           {activeTab === 'invoices' && (
-            <div className={`rounded-2xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
+            <div className={`rounded-3xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-4">
                 <div>
                   <h3 className="text-base md:text-lg font-bold">Tax Invoices</h3>
@@ -1680,18 +1680,18 @@ export default function CashLedgerDashboard() {
               </div>
 
               {invoices.length === 0 ? (
-                <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-2xl">
+                <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-3xl">
                   <Receipt size={40} className="mx-auto text-slate-600 mb-3" />
                   <p className="font-bold text-slate-400 text-sm">No Tax Invoices Created Yet</p>
                   <button 
                     onClick={() => handleProAction(() => setShowInvoiceModal(true))}
-                    className="mt-3 bg-sky-600 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
+                    className="mt-3 bg-sky-600 text-white px-4 py-2 rounded-2xl font-bold text-xs uppercase shadow-md cursor-pointer"
                   >
                     + Create Invoice
                   </button>
                 </div>
               ) : (
-                <div className={`border rounded-xl overflow-hidden shadow-sm transition-colors ${darkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
+                <div className={`border rounded-2xl overflow-hidden shadow-sm transition-colors ${darkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[600px]">
                       <thead>
@@ -1718,14 +1718,14 @@ export default function CashLedgerDashboard() {
                               <button 
                                 onClick={() => handleProAction(() => executeDownloadInvoicePDF(inv))}
                                 title="Download A4 PDF"
-                                className="bg-slate-800 hover:bg-sky-600 text-slate-200 hover:text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-1 transition-all cursor-pointer border border-slate-700 shadow-sm"
+                                className="bg-slate-800 hover:bg-sky-600 text-slate-200 hover:text-white px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase inline-flex items-center gap-1 transition-all cursor-pointer border border-slate-700 shadow-sm"
                               >
                                 <Download size={11} /> A4
                               </button>
                               <button 
                                 onClick={() => handleProAction(() => executeDownloadThermalReceipt(inv))}
                                 title="Download 80mm Thermal Receipt"
-                                className="bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                                className="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase inline-flex items-center gap-1 transition-all cursor-pointer shadow-sm"
                               >
                                 <Printer size={11} /> Thermal
                               </button>
@@ -1741,7 +1741,7 @@ export default function CashLedgerDashboard() {
           )}
 
           {activeTab === 'inventory' && (
-            <div className={`rounded-2xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
+            <div className={`rounded-3xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-4">
                 <div>
                   <h3 className="text-base md:text-lg font-bold">Inventory & Stock</h3>
@@ -1749,25 +1749,25 @@ export default function CashLedgerDashboard() {
                 </div>
                 <button 
                   onClick={() => { setEditingItem(null); setInvItemName(''); setInvStockQty(''); setInvItemPrice(''); setShowInventoryModal(true); }}
-                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center justify-center gap-2"
+                  className="bg-sky-600 hover:bg-sky-700 text-white px-4.5 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center justify-center gap-2"
                 >
                   <Plus size={15} /> Add Stock Item
                 </button>
               </div>
 
               {inventory.length === 0 ? (
-                <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-2xl">
+                <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-3xl">
                   <Package size={40} className="mx-auto text-slate-600 mb-3" />
                   <p className="font-bold text-slate-400 text-sm">No Stock Items Added Yet</p>
                   <button 
                     onClick={() => { setEditingItem(null); setInvItemName(''); setInvStockQty(''); setInvItemPrice(''); setShowInventoryModal(true); }}
-                    className="mt-3 bg-sky-600 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
+                    className="mt-3 bg-sky-600 text-white px-4 py-2 rounded-2xl font-bold text-xs uppercase shadow-md cursor-pointer"
                   >
                     + Add Item
                   </button>
                 </div>
               ) : (
-                <div className={`border rounded-xl overflow-hidden shadow-sm transition-colors ${darkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
+                <div className={`border rounded-2xl overflow-hidden shadow-sm transition-colors ${darkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[600px]">
                       <thead>
@@ -1787,11 +1787,11 @@ export default function CashLedgerDashboard() {
                             <td className={`p-3.5 text-right font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Rs. {item.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                             <td className="p-3.5 text-center">
                               {item.stock <= 5 ? (
-                                <span className="bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded text-[10px] font-black uppercase inline-flex items-center gap-1">
+                                <span className="bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase inline-flex items-center gap-1">
                                   <AlertTriangle size={10} /> Low Stock
                                 </span>
                               ) : (
-                                <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-black uppercase">
+                                <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase">
                                   In Stock
                                 </span>
                               )}
@@ -1806,7 +1806,7 @@ export default function CashLedgerDashboard() {
                                   setShowInventoryModal(true);
                                 }}
                                 title="Edit Stock"
-                                className="text-sky-400 hover:text-sky-300 p-1 cursor-pointer"
+                                className="text-sky-400 hover:text-sky-300 p-1.5 rounded-lg cursor-pointer"
                               >
                                 <Edit3 size={15} />
                               </button>
@@ -1817,7 +1817,7 @@ export default function CashLedgerDashboard() {
                                   }
                                 }}
                                 title="Delete Item"
-                                className="text-rose-400 hover:text-rose-300 p-1 cursor-pointer"
+                                className="text-rose-400 hover:text-rose-300 p-1.5 rounded-lg cursor-pointer"
                               >
                                 <Trash2 size={15} />
                               </button>
@@ -1833,13 +1833,13 @@ export default function CashLedgerDashboard() {
           )}
 
           {activeTab === 'reports' && (
-            <div className={`rounded-2xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
+            <div className={`rounded-3xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
               <h3 className="text-lg font-bold mb-1">Download Account Statements</h3>
               <p className="text-xs text-slate-400 mb-6">Generate and download filtered PDF account reports</p>
 
-              <div className={`p-6 border rounded-2xl transition-all max-w-md relative ${darkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50/30 border-slate-200/80'}`}>
+              <div className={`p-6 border rounded-3xl transition-all max-w-md relative ${darkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50/30 border-slate-200/80'}`}>
                 {!isPro && (
-                  <span className="absolute top-4 right-4 bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-extrabold flex items-center gap-1">
+                  <span className="absolute top-4 right-4 bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1">
                     <Crown size={12} /> PRO FEATURE
                   </span>
                 )}
@@ -1849,7 +1849,7 @@ export default function CashLedgerDashboard() {
                 
                 <button 
                   onClick={() => handleProAction(executeDownloadPDF)}
-                  className="bg-slate-800 hover:bg-slate-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all w-full sm:w-auto border border-slate-700"
+                  className="bg-slate-800 hover:bg-slate-700 text-white px-5 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all w-full sm:w-auto border border-slate-700"
                 >
                   <Download size={15} /> Download PDF
                 </button>
@@ -1859,20 +1859,20 @@ export default function CashLedgerDashboard() {
 
           {activeTab === 'settings' && (
             <div className="space-y-6 max-w-2xl">
-              <div className={`rounded-2xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
+              <div className={`rounded-3xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
                 <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
                   <div>
                     <h3 className="text-lg font-bold">Store & Subscription</h3>
                     <p className="text-xs text-slate-400">Manage your business profile and plan</p>
                   </div>
-                  <div className={`px-3 py-1.5 rounded-xl flex items-center gap-2 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
+                  <div className={`px-3.5 py-1.5 rounded-2xl flex items-center gap-2 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
                     <Crown size={15} className={isPro ? "text-amber-400" : "text-slate-400"} />
                     <span className={`text-xs font-bold ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{isPro ? "PRO Plan Active" : "Free Plan"}</span>
                   </div>
                 </div>
 
                 {saveSuccess && (
-                  <div className="mb-4 p-3 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-xl font-bold text-xs flex items-center gap-2">
+                  <div className="mb-4 p-3.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-2xl font-bold text-xs flex items-center gap-2">
                     <CheckCircle2 size={16} /> Business Profile Saved
                   </div>
                 )}
@@ -1886,7 +1886,7 @@ export default function CashLedgerDashboard() {
                       value={businessName} 
                       onChange={(e) => setBusinessName(e.target.value)}
                       placeholder="Enter business name"
-                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
+                      className={`w-full border rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
                     />
                   </div>
 
@@ -1897,7 +1897,7 @@ export default function CashLedgerDashboard() {
                       value={phone} 
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="Enter contact number"
-                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
+                      className={`w-full border rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
                     />
                   </div>
 
@@ -1908,14 +1908,14 @@ export default function CashLedgerDashboard() {
                       value={address} 
                       onChange={(e) => setAddress(e.target.value)}
                       placeholder="Enter business address"
-                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
+                      className={`w-full border rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
                     />
                   </div>
 
                   <div className="flex justify-between items-center pt-4 border-t border-slate-800">
                     <button 
                       type="submit"
-                      className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer w-full sm:w-auto text-center border border-slate-700 transition-all"
+                      className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-2xl font-bold text-xs uppercase shadow-md cursor-pointer w-full sm:w-auto text-center border border-slate-700 transition-all"
                     >
                       Save Changes
                     </button>
@@ -1923,8 +1923,8 @@ export default function CashLedgerDashboard() {
                 </form>
               </div>
 
-              {/* SECURITY PIN SETUP SECTION */}
-              <div className={`rounded-2xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
+              {/* SECURITY PIN SETUP SECTION v2.0 */}
+              <div className={`rounded-3xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
                 <div className="flex items-center gap-2 mb-2 text-sky-400">
                   <ShieldCheck size={18} />
                   <h3 className="text-base font-bold">App Security PIN Lock</h3>
@@ -1934,7 +1934,7 @@ export default function CashLedgerDashboard() {
                 </p>
 
                 {pinSuccess && (
-                  <div className="mb-4 p-3 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-xl font-bold text-xs">
+                  <div className="mb-4 p-3.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-2xl font-bold text-xs">
                     Security PIN updated successfully!
                   </div>
                 )}
@@ -1949,14 +1949,14 @@ export default function CashLedgerDashboard() {
                       value={newPinInput}
                       onChange={(e) => setNewPinInput(e.target.value)}
                       placeholder="••••"
-                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900'}`}
+                      className={`w-full border rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900'}`}
                     />
                   </div>
 
                   <div className="flex items-center gap-3">
                     <button 
                       type="submit"
-                      className="bg-sky-600 hover:bg-sky-500 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer transition-all"
+                      className="bg-sky-600 hover:bg-sky-500 text-white px-5 py-3 rounded-2xl font-bold text-xs uppercase shadow-md cursor-pointer transition-all"
                     >
                       {userPin ? 'Update PIN' : 'Set PIN Lock'}
                     </button>
@@ -1964,7 +1964,7 @@ export default function CashLedgerDashboard() {
                       <button 
                         type="button"
                         onClick={handleRemovePin}
-                        className="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 px-4 py-2.5 rounded-xl font-bold text-xs uppercase cursor-pointer transition-all"
+                        className="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 px-4 py-3 rounded-2xl font-bold text-xs uppercase cursor-pointer transition-all"
                       >
                         Remove PIN
                       </button>
@@ -1974,7 +1974,7 @@ export default function CashLedgerDashboard() {
               </div>
 
               {/* RESET / DANGER ZONE */}
-              <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-6 md:p-8 shadow-sm">
+              <div className="bg-rose-500/10 border border-rose-500/30 rounded-3xl p-6 md:p-8 shadow-sm">
                 <div className="flex items-center gap-2 mb-2 text-rose-400">
                   <RotateCcw size={18} />
                   <h3 className="text-base font-bold">Reset Account Data</h3>
@@ -1984,7 +1984,7 @@ export default function CashLedgerDashboard() {
                 </p>
                 <button 
                   onClick={handleResetAllData}
-                  className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider cursor-pointer shadow-md transition-all flex items-center gap-2"
+                  className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider cursor-pointer shadow-md transition-all flex items-center gap-2"
                 >
                   <Trash2 size={15} /> Clear & Reset All Entries
                 </button>
@@ -1994,7 +1994,7 @@ export default function CashLedgerDashboard() {
         </main>
       </div>
 
-      {/* UPGRADE PAYWALL MODAL */}
+      {/* UPGRADE PAYWALL MODAL v2.0 */}
       {showUpgradeModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center relative overflow-hidden space-y-6 text-white">
@@ -2054,7 +2054,7 @@ export default function CashLedgerDashboard() {
       {/* Add Transaction Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 text-white">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-6 text-white">
             <h3 className={`text-base font-extrabold uppercase tracking-wider mb-4 ${txnType === 'CASH_IN' ? 'text-emerald-400' : 'text-rose-400'}`}>
               {activeTab === 'parties' && selectedParty ? `${txnType === 'CASH_IN' ? '+ Received From' : '- Given To'} ${selectedParty.name}` : (txnType === 'CASH_IN' ? '+ Record Cash In Entry' : '- Record Cash Out Entry')}
             </h3>
@@ -2068,7 +2068,7 @@ export default function CashLedgerDashboard() {
                   value={amount} 
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"
-                  className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
+                  className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-4 py-3 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                 />
               </div>
 
@@ -2078,7 +2078,7 @@ export default function CashLedgerDashboard() {
                   <select 
                     value={paymentMode} 
                     onChange={(e) => setPaymentMode(e.target.value)}
-                    className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-3 py-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
                   >
                     <option value="Cash">Cash</option>
                     <option value="UPI">UPI</option>
@@ -2092,7 +2092,7 @@ export default function CashLedgerDashboard() {
                   <select 
                     value={category} 
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-3 py-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
                   >
                     {txnType === 'CASH_IN' ? (
                       <>
@@ -2121,7 +2121,7 @@ export default function CashLedgerDashboard() {
                   value={remarks} 
                   onChange={(e) => setRemarks(e.target.value)}
                   placeholder={activeTab === 'parties' && selectedParty ? `e.g. Received for bill` : "Enter entry details"}
-                  className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
+                  className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                 />
               </div>
 
@@ -2129,13 +2129,13 @@ export default function CashLedgerDashboard() {
                 <button 
                   type="button" 
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-bold text-xs uppercase cursor-pointer"
+                  className="px-4 py-2.5 border border-slate-700 rounded-2xl text-slate-300 hover:bg-slate-800 font-bold text-xs uppercase cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
-                  className={`px-5 py-2 text-white rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer ${txnType === 'CASH_IN' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}`}
+                  className={`px-5 py-2.5 text-white rounded-2xl font-bold text-xs uppercase shadow-md cursor-pointer ${txnType === 'CASH_IN' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}`}
                 >
                   Save Entry
                 </button>
@@ -2148,7 +2148,7 @@ export default function CashLedgerDashboard() {
       {/* Add Party Modal */}
       {showAddPartyModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 text-white">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-6 text-white">
             <h3 className="text-base font-extrabold uppercase mb-4">Add New Party</h3>
             <form onSubmit={handleAddParty} className="space-y-4">
               <div>
@@ -2159,7 +2159,7 @@ export default function CashLedgerDashboard() {
                   value={partyName} 
                   onChange={(e) => setPartyName(e.target.value)}
                   placeholder="Enter party name"
-                  className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
+                  className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                 />
               </div>
               <div>
@@ -2169,20 +2169,20 @@ export default function CashLedgerDashboard() {
                   value={partyPhone} 
                   onChange={(e) => setPartyPhone(e.target.value)}
                   placeholder="Enter phone number"
-                  className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
+                  className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-4 py-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                 />
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
                 <button 
                   type="button" 
                   onClick={() => setShowAddPartyModal(false)}
-                  className="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-bold text-xs uppercase cursor-pointer"
+                  className="px-4 py-2.5 border border-slate-700 rounded-2xl text-slate-300 hover:bg-slate-800 font-bold text-xs uppercase cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
-                  className="px-5 py-2 text-white bg-sky-600 hover:bg-sky-700 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
+                  className="px-5 py-2.5 text-white bg-sky-600 hover:bg-sky-700 rounded-2xl font-bold text-xs uppercase shadow-md cursor-pointer"
                 >
                   Save Party
                 </button>
@@ -2195,7 +2195,7 @@ export default function CashLedgerDashboard() {
       {/* Add / Edit Inventory Item Modal */}
       {showInventoryModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 text-white">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-6 text-white">
             <h3 className="text-base font-extrabold uppercase mb-4 flex items-center gap-2">
               <Package size={18} className="text-sky-400" /> {editingItem ? 'Edit Stock Item' : 'Add Stock Item'}
             </h3>
@@ -2208,7 +2208,7 @@ export default function CashLedgerDashboard() {
                   value={invItemName} 
                   onChange={(e) => setInvItemName(e.target.value)}
                   placeholder="e.g. KitKat Chocolate"
-                  className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
+                  className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -2221,7 +2221,7 @@ export default function CashLedgerDashboard() {
                     value={invStockQty} 
                     onChange={(e) => setInvStockQty(e.target.value)}
                     placeholder="e.g. 20"
-                    className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                   />
                 </div>
                 <div>
@@ -2233,7 +2233,7 @@ export default function CashLedgerDashboard() {
                     value={invItemPrice} 
                     onChange={(e) => setInvItemPrice(e.target.value)}
                     placeholder="0.00"
-                    className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                   />
                 </div>
               </div>
@@ -2241,13 +2241,13 @@ export default function CashLedgerDashboard() {
                 <button 
                   type="button" 
                   onClick={() => setShowInventoryModal(false)}
-                  className="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-bold text-xs uppercase cursor-pointer"
+                  className="px-4 py-2.5 border border-slate-700 rounded-2xl text-slate-300 hover:bg-slate-800 font-bold text-xs uppercase cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
-                  className="px-5 py-2 text-white bg-sky-600 hover:bg-sky-700 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
+                  className="px-5 py-2.5 text-white bg-sky-600 hover:bg-sky-700 rounded-2xl font-bold text-xs uppercase shadow-md cursor-pointer"
                 >
                   {editingItem ? 'Update Stock' : 'Save Item'}
                 </button>
@@ -2260,7 +2260,7 @@ export default function CashLedgerDashboard() {
       {/* Create Multi-Item Invoice Modal with GST Selection */}
       {showInvoiceModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto text-white">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto text-white">
             <h3 className="text-base font-extrabold uppercase mb-4 flex items-center gap-2">
               <Receipt size={18} className="text-sky-400" /> Create Tax Invoice with GST
             </h3>
@@ -2274,7 +2274,7 @@ export default function CashLedgerDashboard() {
                     value={invCustomerName} 
                     onChange={(e) => setInvCustomerName(e.target.value)}
                     placeholder="Enter customer name"
-                    className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                   />
                 </div>
                 <div>
@@ -2282,7 +2282,7 @@ export default function CashLedgerDashboard() {
                   <select 
                     value={gstRate} 
                     onChange={(e) => setGstRate(e.target.value)}
-                    className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-3.5 py-3 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
                   >
                     <option value="0">0% GST (No Tax)</option>
                     <option value="5">5% GST (2.5% CGST + 2.5% SGST)</option>
@@ -2298,21 +2298,21 @@ export default function CashLedgerDashboard() {
                   <button 
                     type="button" 
                     onClick={handleAddItemRow}
-                    className="text-xs bg-sky-500/10 text-sky-400 border border-sky-500/20 px-3 py-1 rounded-lg font-bold hover:bg-sky-500/20 cursor-pointer"
+                    className="text-xs bg-sky-500/10 text-sky-400 border border-sky-500/20 px-3 py-1.5 rounded-xl font-bold hover:bg-sky-500/20 cursor-pointer"
                   >
                     + Add Item
                   </button>
                 </div>
 
                 {itemsList.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2 bg-slate-800/60 p-3 rounded-xl border border-slate-700">
+                  <div key={index} className="flex items-center gap-2 bg-slate-800/60 p-3.5 rounded-2xl border border-slate-700">
                     <input 
                       type="text" 
                       required
                       placeholder="Item name" 
                       value={item.name}
                       onChange={(e) => handleItemChange(index, 'name', e.target.value)}
-                      className="flex-1 border border-slate-700 bg-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-white placeholder-slate-500"
+                      className="flex-1 border border-slate-700 bg-slate-800 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-white placeholder-slate-500"
                     />
                     <input 
                       type="number" 
@@ -2321,7 +2321,7 @@ export default function CashLedgerDashboard() {
                       placeholder="Qty" 
                       value={item.qty}
                       onChange={(e) => handleItemChange(index, 'qty', e.target.value)}
-                      className="w-16 border border-slate-700 bg-slate-800 rounded-lg px-2 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-white placeholder-slate-500"
+                      className="w-16 border border-slate-700 bg-slate-800 rounded-xl px-2.5 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-white placeholder-slate-500"
                     />
                     <input 
                       type="number" 
@@ -2330,13 +2330,13 @@ export default function CashLedgerDashboard() {
                       placeholder="Price" 
                       value={item.price}
                       onChange={(e) => handleItemChange(index, 'price', e.target.value)}
-                      className="w-24 border border-slate-700 bg-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-white placeholder-slate-500"
+                      className="w-24 border border-slate-700 bg-slate-800 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-white placeholder-slate-500"
                     />
                     {itemsList.length > 1 && (
                       <button 
                         type="button" 
                         onClick={() => handleRemoveItemRow(index)}
-                        className="text-rose-400 hover:text-rose-300 p-1 cursor-pointer"
+                        className="text-rose-400 hover:text-rose-300 p-1.5 cursor-pointer"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -2349,13 +2349,13 @@ export default function CashLedgerDashboard() {
                 <button 
                   type="button" 
                   onClick={() => setShowInvoiceModal(false)}
-                  className="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-bold text-xs uppercase cursor-pointer"
+                  className="px-4 py-2.5 border border-slate-700 rounded-2xl text-slate-300 hover:bg-slate-800 font-bold text-xs uppercase cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
-                  className="px-5 py-2 text-white bg-sky-600 hover:bg-sky-700 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
+                  className="px-5 py-2.5 text-white bg-sky-600 hover:bg-sky-700 rounded-2xl font-bold text-xs uppercase shadow-md cursor-pointer"
                 >
                   Save & Generate PDF
                 </button>
