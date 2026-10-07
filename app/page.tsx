@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle, Edit3, Percent, Printer 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle, Edit3, Percent, Printer, Moon, Sun 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
@@ -15,6 +15,7 @@ export default function CashLedgerDashboard() {
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
 
   const [activeTab, setActiveTab] = useState('daybook');
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -514,7 +515,6 @@ export default function CashLedgerDashboard() {
     doc.save(`${inv.invoiceNumber}_${inv.customerName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   };
 
-  // THERMAL 80MM POS RECEIPT PDF (FIXED NAME TRUNCATION & SPACING)
   const executeDownloadThermalReceipt = async (inv: any) => {
     const { default: jsPDF } = await import('jspdf');
 
@@ -555,7 +555,6 @@ export default function CashLedgerDashboard() {
 
     const itemsArray = inv.items || [];
     itemsArray.forEach((item: any) => {
-      // Expanded name width to 13 characters to fit full product names without clipping
       const fullName = item.name || 'Item';
       const nameStr = fullName.substring(0, 13).padEnd(13, ' ');
       const qtyStr = item.qty.toString().padStart(2, ' ');
@@ -941,13 +940,13 @@ export default function CashLedgerDashboard() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans antialiased md:flex-row">
+    <div className={`flex flex-col min-h-screen font-sans antialiased md:flex-row transition-colors ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       <style jsx global>{`
         [data-nextjs-toast], [data-nextjs-dialog-overlay], #nextjs-dev-indicator { display: none !important; }
       `}</style>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 bg-slate-950 text-white flex-col justify-between border-r border-slate-800 shrink-0">
+      <aside className={`hidden md:flex w-64 flex-col justify-between border-r shrink-0 transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-slate-950 border-slate-800 text-white'}`}>
         <div>
           <div className="p-6 border-b border-slate-800/80">
             <div className="flex items-center justify-between">
@@ -1040,6 +1039,15 @@ export default function CashLedgerDashboard() {
             )}
           </div>
 
+          {/* Dark Mode Toggle Button */}
+          <button 
+            onClick={() => setDarkMode(!darkMode)}
+            className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 rounded-xl text-[11px] font-bold uppercase flex items-center justify-center gap-2 cursor-pointer transition-all border border-slate-700"
+          >
+            {darkMode ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} className="text-sky-400" />}
+            {darkMode ? 'Light Mode' : 'Dark Mode'}
+          </button>
+
           <button 
             onClick={handleLogout}
             className="w-full bg-slate-800 hover:bg-rose-900/40 hover:text-rose-400 text-slate-300 py-2 rounded-xl text-[11px] font-bold uppercase flex items-center justify-center gap-1.5 cursor-pointer transition-all"
@@ -1050,7 +1058,7 @@ export default function CashLedgerDashboard() {
       </aside>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-950 text-white flex justify-around items-center border-t border-slate-800 px-1 py-2 shadow-2xl">
+      <nav className={`md:hidden fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center border-t px-1 py-2 shadow-2xl transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-slate-950 border-slate-800 text-white'}`}>
         <button 
           onClick={() => setActiveTab('daybook')}
           className={`flex flex-col items-center justify-center gap-1 p-1 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all min-w-[50px] ${
@@ -1108,10 +1116,10 @@ export default function CashLedgerDashboard() {
 
       {/* Main Workspace */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden pb-20 md:pb-0">
-        <header className="bg-white border-b border-slate-200/80 px-4 md:px-8 py-4 md:py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
+        <header className={`border-b px-4 md:px-8 py-4 md:py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
+              <h2 className={`text-xl md:text-2xl font-black tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                 {activeTab === 'daybook' && 'Cashbook Entries'}
                 {activeTab === 'parties' && 'Customer & Party Ledger'}
                 {activeTab === 'invoices' && 'Tax Invoice Generator'}
@@ -1125,7 +1133,7 @@ export default function CashLedgerDashboard() {
                 </span>
               )}
             </div>
-            <p className="text-xs font-semibold text-slate-500 mt-0.5 truncate max-w-[250px] sm:max-w-none">{businessName}</p>
+            <p className="text-xs font-semibold text-slate-400 mt-0.5 truncate max-w-[250px] sm:max-w-none">{businessName}</p>
           </div>
 
           <div className="flex items-center gap-2.5 w-full sm:w-auto">
@@ -1167,67 +1175,67 @@ export default function CashLedgerDashboard() {
             <>
               {/* Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-6">
-                <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                <div className={`p-5 md:p-6 rounded-2xl border shadow-sm flex items-center justify-between transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
                   <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Cash In</p>
-                    <h3 className="text-2xl md:text-3xl font-black text-emerald-600 mt-1">
+                    <h3 className="text-2xl md:text-3xl font-black text-emerald-500 mt-1">
                       Rs. {totalCashIn.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
                   </div>
-                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100">
+                  <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-2xl border border-emerald-500/20">
                     <ArrowDownRight size={22} />
                   </div>
                 </div>
 
-                <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                <div className={`p-5 md:p-6 rounded-2xl border shadow-sm flex items-center justify-between transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
                   <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Total Cash Out</p>
-                    <h3 className="text-2xl md:text-3xl font-black text-rose-600 mt-1">
+                    <h3 className="text-2xl md:text-3xl font-black text-rose-500 mt-1">
                       Rs. {totalCashOut.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
                   </div>
-                  <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl border border-rose-100">
+                  <div className="p-3 bg-rose-500/10 text-rose-500 rounded-2xl border border-rose-500/20">
                     <ArrowUpRight size={22} />
                   </div>
                 </div>
 
-                <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                <div className={`p-5 md:p-6 rounded-2xl border shadow-sm flex items-center justify-between transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
                   <div>
                     <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Net Balance</p>
-                    <h3 className={`text-2xl md:text-3xl font-black mt-1 ${netBalance >= 0 ? 'text-sky-600' : 'text-rose-600'}`}>
+                    <h3 className={`text-2xl md:text-3xl font-black mt-1 ${netBalance >= 0 ? 'text-sky-400' : 'text-rose-500'}`}>
                       Rs. {netBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </h3>
                   </div>
-                  <div className="p-3 bg-sky-50 text-sky-600 rounded-2xl border border-sky-100">
+                  <div className="p-3 bg-sky-500/10 text-sky-400 rounded-2xl border border-sky-500/20">
                     <Wallet size={22} />
                   </div>
                 </div>
               </div>
 
               {inventory.some(item => item.stock <= 5) && (
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex items-center gap-3 shadow-sm">
-                  <AlertTriangle className="text-amber-600 shrink-0" size={20} />
-                  <div className="flex-1 text-xs text-amber-800 font-medium">
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 mb-6 flex items-center gap-3 shadow-sm text-amber-300">
+                  <AlertTriangle className="shrink-0" size={20} />
+                  <div className="flex-1 text-xs font-medium">
                     <strong className="font-bold">Low Stock Warning:</strong> Some items in your inventory are running low (5 or fewer units left). Check the Inventory tab to restock.
                   </div>
                 </div>
               )}
 
               {/* ANALYTICS CHART SECTION */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm mb-8">
+              <div className={`p-6 rounded-2xl border shadow-sm mb-8 transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <TrendingUp size={18} className="text-sky-600" />
-                    <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Business Cash Flow Overview</h3>
+                    <TrendingUp size={18} className="text-sky-400" />
+                    <h3 className={`font-bold text-sm uppercase tracking-wider ${darkMode ? 'text-white' : 'text-slate-900'}`}>Business Cash Flow Overview</h3>
                   </div>
                   <span className="text-[11px] font-semibold text-slate-400">Real-Time Summary</span>
                 </div>
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                      <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} />
-                      <YAxis tick={{ fontSize: 12, fill: '#64748b' }} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={darkMode ? '#334155' : '#e2e8f0'} />
+                      <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                      <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} />
                       <Tooltip formatter={(value: any) => `Rs. ${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} />
                       <Bar dataKey="amount" radius={[8, 8, 0, 0]} />
                     </BarChart>
@@ -1236,42 +1244,42 @@ export default function CashLedgerDashboard() {
               </div>
 
               {/* DATE FILTER & SEARCH BAR */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden mb-6">
-                <div className="p-4 md:p-5 bg-slate-50/70 border-b border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className={`rounded-2xl border shadow-sm overflow-hidden mb-6 transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
+                <div className={`p-4 md:p-5 border-b flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors ${darkMode ? 'bg-slate-900/70 border-slate-800' : 'bg-slate-50/70 border-slate-200/80'}`}>
                   <div className="flex items-center gap-3">
-                    <h3 className="font-bold text-slate-900 text-sm">Transactions Ledger</h3>
-                    <span className="text-[11px] bg-slate-200/70 text-slate-700 px-2.5 py-0.5 rounded-full font-extrabold">
+                    <h3 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-slate-900'}`}>Transactions Ledger</h3>
+                    <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-extrabold ${darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200/70 text-slate-700'}`}>
                       {filteredTransactions.length} Filtered
                     </span>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-xl px-3 py-1.5 shadow-sm">
+                    <div className={`flex items-center gap-2 border rounded-xl px-3 py-1.5 shadow-sm transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'}`}>
                       <Calendar size={14} className="text-slate-400 shrink-0" />
-                      <span className="text-[10px] font-bold text-slate-500 uppercase">From:</span>
+                      <span className="text-[10px] font-bold uppercase text-slate-400">From:</span>
                       <input 
                         type="date" 
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="text-xs font-semibold focus:outline-none bg-transparent text-slate-800 cursor-pointer"
+                        className="text-xs font-semibold focus:outline-none bg-transparent cursor-pointer"
                       />
                     </div>
 
-                    <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-xl px-3 py-1.5 shadow-sm">
+                    <div className={`flex items-center gap-2 border rounded-xl px-3 py-1.5 shadow-sm transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'}`}>
                       <Calendar size={14} className="text-slate-400 shrink-0" />
-                      <span className="text-[10px] font-bold text-slate-500 uppercase">To:</span>
+                      <span className="text-[10px] font-bold uppercase text-slate-400">To:</span>
                       <input 
                         type="date" 
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
-                        className="text-xs font-semibold focus:outline-none bg-transparent text-slate-800 cursor-pointer"
+                        className="text-xs font-semibold focus:outline-none bg-transparent cursor-pointer"
                       />
                     </div>
 
                     {(startDate || endDate) && (
                       <button 
                         onClick={() => { setStartDate(''); setEndDate(''); }}
-                        className="text-xs font-bold text-rose-600 hover:text-rose-700 underline px-1 cursor-pointer"
+                        className="text-xs font-bold text-rose-500 hover:text-rose-400 underline px-1 cursor-pointer"
                       >
                         Reset Dates
                       </button>
@@ -1284,7 +1292,7 @@ export default function CashLedgerDashboard() {
                         placeholder="Search entries..." 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-9 pr-4 py-1.5 text-xs bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-semibold w-full sm:w-56 shadow-sm"
+                        className={`pl-9 pr-4 py-1.5 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-semibold w-full sm:w-56 shadow-sm transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
                       />
                     </div>
                   </div>
@@ -1293,7 +1301,7 @@ export default function CashLedgerDashboard() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse min-w-[700px]">
                     <thead>
-                      <tr className="bg-slate-100/70 text-slate-600 text-[10px] uppercase font-black border-b border-slate-200">
+                      <tr className={`text-[10px] uppercase font-black border-b transition-colors ${darkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100/70 border-slate-200 text-slate-600'}`}>
                         <th className="p-4">Date & Time</th>
                         <th className="p-4">Particulars / Remarks</th>
                         <th className="p-4">Category</th>
@@ -1302,7 +1310,7 @@ export default function CashLedgerDashboard() {
                         <th className="p-4 text-right">Cash Out (Rs.)</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 text-sm font-medium text-slate-800">
+                    <tbody className={`divide-y text-sm font-medium transition-colors ${darkMode ? 'divide-slate-800 text-slate-200' : 'divide-slate-100 text-slate-800'}`}>
                       {filteredTransactions.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="text-center py-12 text-slate-400 font-medium text-xs">
@@ -1313,32 +1321,32 @@ export default function CashLedgerDashboard() {
                         filteredTransactions.map((t) => {
                           const p = parties.find(party => party.id === t.party_id);
                           return (
-                            <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
-                              <td className="p-4 text-slate-500 text-xs font-mono font-semibold">
+                            <tr key={t.id} className={`transition-colors ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50/80'}`}>
+                              <td className="p-4 text-slate-400 text-xs font-mono font-semibold">
                                 {new Date(t.txn_date).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
                               </td>
-                              <td className="p-4 font-bold text-slate-900">
+                              <td className={`p-4 font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                                 {p ? (
                                   <span className="inline-flex items-center gap-1.5">
-                                    <span className="text-sky-600 bg-sky-50 px-2 py-0.5 rounded text-xs">{p.name}</span>
+                                    <span className="text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded text-xs border border-sky-500/20">{p.name}</span>
                                     <span>{t.remarks}</span>
                                   </span>
                                 ) : (t.remarks || 'Cash Transaction')}
                               </td>
                               <td className="p-4">
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-lg text-[10px] font-black uppercase tracking-wider">
                                   <Tag size={10} /> {t.category || 'General'}
                                 </span>
                               </td>
                               <td className="p-4">
-                                <span className="px-2 py-1 bg-slate-100 border border-slate-200 text-slate-700 rounded-md text-[10px] font-black uppercase tracking-wider">
+                                <span className={`px-2 py-1 border rounded-md text-[10px] font-black uppercase tracking-wider ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
                                   {t.payment_mode}
                                 </span>
                               </td>
-                              <td className="p-4 text-right font-bold text-emerald-600">
+                              <td className="p-4 text-right font-bold text-emerald-500">
                                 {t.txn_type === 'CASH_IN' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
                               </td>
-                              <td className="p-4 text-right font-bold text-rose-600">
+                              <td className="p-4 text-right font-bold text-rose-500">
                                 {t.txn_type === 'CASH_OUT' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
                               </td>
                             </tr>
@@ -1353,11 +1361,11 @@ export default function CashLedgerDashboard() {
           )}
 
           {activeTab === 'parties' && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-4 md:p-6 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+            <div className={`rounded-2xl border p-4 md:p-6 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-4">
                 <div>
-                  <h3 className="text-base md:text-lg font-bold text-slate-900">Party Accounts</h3>
-                  <p className="text-xs text-slate-500 font-semibold">Manage customer and vendor ledger accounts</p>
+                  <h3 className="text-base md:text-lg font-bold">Party Accounts</h3>
+                  <p className="text-xs text-slate-400 font-semibold">Manage customer and vendor ledger accounts</p>
                 </div>
                 <button 
                   onClick={() => setShowAddPartyModal(true)}
@@ -1368,9 +1376,9 @@ export default function CashLedgerDashboard() {
               </div>
 
               {parties.length === 0 ? (
-                <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-2xl">
-                  <Users size={40} className="mx-auto text-slate-300 mb-3" />
-                  <p className="font-bold text-slate-700 text-sm">No Party Accounts Added</p>
+                <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-2xl">
+                  <Users size={40} className="mx-auto text-slate-600 mb-3" />
+                  <p className="font-bold text-slate-400 text-sm">No Party Accounts Added</p>
                   <button 
                     onClick={() => setShowAddPartyModal(true)}
                     className="mt-3 bg-sky-600 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
@@ -1381,7 +1389,7 @@ export default function CashLedgerDashboard() {
               ) : (
                 <div className="flex flex-col md:flex-row gap-6">
                   {/* Left Column */}
-                  <div className="w-full md:w-80 shrink-0 space-y-3 border-b md:border-b-0 md:border-r border-slate-100 pb-4 md:pb-0 md:pr-4">
+                  <div className="w-full md:w-80 shrink-0 space-y-3 border-b md:border-b-0 md:border-r border-slate-800 pb-4 md:pb-0 md:pr-4">
                     <div className="relative">
                       <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
                       <input 
@@ -1389,7 +1397,7 @@ export default function CashLedgerDashboard() {
                         placeholder="Search party..." 
                         value={partySearchTerm}
                         onChange={(e) => setPartySearchTerm(e.target.value)}
-                        className="pl-8 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium w-full shadow-sm"
+                        className={`pl-8 pr-3 py-2 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium w-full shadow-sm transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                       />
                     </div>
 
@@ -1409,16 +1417,16 @@ export default function CashLedgerDashboard() {
                               onClick={() => setSelectedParty(p)}
                               className={`p-3.5 rounded-xl border transition-all cursor-pointer flex justify-between items-center ${
                                 selectedParty && selectedParty.id === p.id 
-                                  ? 'border-sky-500 bg-sky-50/50 shadow-sm' 
-                                  : 'border-slate-200/80 hover:bg-slate-50'
+                                  ? 'border-sky-500 bg-sky-500/10 shadow-sm' 
+                                  : darkMode ? 'border-slate-800 hover:bg-slate-800/50' : 'border-slate-200/80 hover:bg-slate-50'
                               }`}
                             >
                               <div className="min-w-0 pr-2">
-                                <h4 className="font-bold text-slate-900 text-sm truncate">{p.name}</h4>
-                                <p className="text-[11px] text-slate-500 font-medium truncate">{p.phone ? `Phone: ${p.phone}` : 'No phone'}</p>
+                                <h4 className={`font-bold text-sm truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>{p.name}</h4>
+                                <p className="text-[11px] text-slate-400 font-medium truncate">{p.phone ? `Phone: ${p.phone}` : 'No phone'}</p>
                               </div>
                               <div className="text-right shrink-0">
-                                <div className={`text-xs font-black ${pBal >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                <div className={`text-xs font-black ${pBal >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                   Rs. {Math.abs(pBal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                 </div>
                                 <div className="text-[9px] font-bold text-slate-400 uppercase">
@@ -1436,30 +1444,28 @@ export default function CashLedgerDashboard() {
                   <div className="flex-1 min-w-0">
                     {selectedParty ? (
                       <div className="space-y-4">
-                        <div className="bg-slate-900 text-white p-4 md:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
+                        <div className="bg-slate-950 text-white p-4 md:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md border border-slate-800">
                           <div className="flex items-center justify-between sm:justify-start gap-2.5 w-full sm:w-auto">
                             <div className="flex items-center gap-2 min-w-0">
                               <UserCheck size={18} className="text-sky-400 shrink-0" />
                               <h3 className="text-base md:text-lg font-black truncate">{selectedParty.name}</h3>
                               
-                              {/* WHATSAPP REMINDER (PROTECTED) */}
                               <button 
                                 onClick={() => handleProAction(executeWhatsAppReminder)}
                                 title="Send WhatsApp Payment Reminder (PRO)"
                                 className="relative bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded-xl transition-all cursor-pointer shadow-sm flex items-center justify-center shrink-0"
                               >
                                 <MessageCircle size={15} />
-                                {!isPro && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border border-slate-900"></span>}
+                                {!isPro && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border border-slate-950"></span>}
                               </button>
 
-                              {/* PARTY PDF (PROTECTED) */}
                               <button 
                                 onClick={() => handleProAction(executeDownloadPartyPDF)}
                                 title="Download Party Statement PDF (PRO)"
-                                className="relative bg-slate-800 hover:bg-sky-600 text-slate-300 hover:text-white p-2 rounded-xl transition-all cursor-pointer border border-slate-700/80 shadow-sm flex items-center justify-center shrink-0"
+                                className="relative bg-slate-800 hover:bg-sky-600 text-slate-300 hover:text-white p-2 rounded-xl transition-all cursor-pointer border border-slate-700 shadow-sm flex items-center justify-center shrink-0"
                               >
                                 <Download size={15} />
-                                {!isPro && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border border-slate-900"></span>}
+                                {!isPro && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border border-slate-950"></span>}
                               </button>
                             </div>
                           </div>
@@ -1475,10 +1481,10 @@ export default function CashLedgerDashboard() {
                           </div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${darkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
                           <div>
-                            <h4 className="font-bold text-xs text-slate-900">Record Entry for {selectedParty.name}</h4>
-                            <p className="text-[10px] text-slate-500">Add transaction directly to account</p>
+                            <h4 className={`font-bold text-xs ${darkMode ? 'text-white' : 'text-slate-900'}`}>Record Entry for {selectedParty.name}</h4>
+                            <p className="text-[10px] text-slate-400">Add transaction directly to account</p>
                           </div>
                           <div className="flex items-center gap-2 w-full sm:w-auto">
                             <button 
@@ -1496,11 +1502,11 @@ export default function CashLedgerDashboard() {
                           </div>
                         </div>
 
-                        <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                        <div className={`border rounded-xl overflow-hidden shadow-sm transition-colors ${darkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
                           <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse min-w-[600px]">
                               <thead>
-                                <tr className="bg-slate-100 text-slate-600 text-[10px] uppercase font-black border-b border-slate-200">
+                                <tr className={`text-[10px] uppercase font-black border-b transition-colors ${darkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
                                   <th className="p-3">Date</th>
                                   <th className="p-3">Remarks / Particulars</th>
                                   <th className="p-3">Category</th>
@@ -1509,7 +1515,7 @@ export default function CashLedgerDashboard() {
                                   <th className="p-3 text-right">Received (+ In)</th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                              <tbody className={`divide-y text-xs font-medium transition-colors ${darkMode ? 'divide-slate-800 text-slate-200' : 'divide-slate-100'}`}>
                                 {partyTransactions.length === 0 ? (
                                   <tr>
                                     <td colSpan={6} className="text-center py-10 text-slate-400 font-medium">
@@ -1518,25 +1524,25 @@ export default function CashLedgerDashboard() {
                                   </tr>
                                 ) : (
                                   partyTransactions.map((t) => (
-                                    <tr key={t.id} className="hover:bg-slate-50 transition-colors">
-                                      <td className="p-3 text-slate-500 font-mono">
+                                    <tr key={t.id} className={`transition-colors ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
+                                      <td className="p-3 text-slate-400 font-mono">
                                         {new Date(t.txn_date).toLocaleDateString('en-IN')}
                                       </td>
-                                      <td className="p-3 font-bold text-slate-800">{t.remarks}</td>
+                                      <td className={`p-3 font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{t.remarks}</td>
                                       <td className="p-3">
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded text-[9px] font-black uppercase">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded text-[9px] font-black uppercase">
                                           <Tag size={9} /> {t.category || 'General'}
                                         </span>
                                       </td>
                                       <td className="p-3">
-                                        <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 rounded text-[9px] font-bold">
+                                        <span className={`px-2 py-0.5 border rounded text-[9px] font-bold ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
                                           {t.payment_mode}
                                         </span>
                                       </td>
-                                      <td className="p-3 text-right font-bold text-rose-600">
+                                      <td className="p-3 text-right font-bold text-rose-500">
                                         {t.txn_type === 'CASH_OUT' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
                                       </td>
-                                      <td className="p-3 text-right font-bold text-emerald-600">
+                                      <td className="p-3 text-right font-bold text-emerald-500">
                                         {t.txn_type === 'CASH_IN' ? `Rs. ${parseFloat(t.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
                                       </td>
                                     </tr>
@@ -1548,7 +1554,7 @@ export default function CashLedgerDashboard() {
                         </div>
                       </div>
                     ) : (
-                      <div className="text-center py-16 text-slate-400 font-medium border-2 border-dashed border-slate-200 rounded-2xl text-xs">
+                      <div className="text-center py-16 text-slate-400 font-medium border-2 border-dashed border-slate-800 rounded-2xl text-xs">
                         Select a party from the list to view entries.
                       </div>
                     )}
@@ -1559,18 +1565,18 @@ export default function CashLedgerDashboard() {
           )}
 
           {activeTab === 'invoices' && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+            <div className={`rounded-2xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-4">
                 <div>
-                  <h3 className="text-base md:text-lg font-bold text-slate-900">Tax Invoices</h3>
-                  <p className="text-xs text-slate-500 font-semibold">Generate and download standard A4 or thermal POS receipts</p>
+                  <h3 className="text-base md:text-lg font-bold">Tax Invoices</h3>
+                  <p className="text-xs text-slate-400 font-semibold">Generate and download standard A4 or thermal POS receipts</p>
                 </div>
               </div>
 
               {invoices.length === 0 ? (
-                <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-2xl">
-                  <Receipt size={40} className="mx-auto text-slate-300 mb-3" />
-                  <p className="font-bold text-slate-700 text-sm">No Tax Invoices Created Yet</p>
+                <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-2xl">
+                  <Receipt size={40} className="mx-auto text-slate-600 mb-3" />
+                  <p className="font-bold text-slate-400 text-sm">No Tax Invoices Created Yet</p>
                   <button 
                     onClick={() => handleProAction(() => setShowInvoiceModal(true))}
                     className="mt-3 bg-sky-600 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
@@ -1579,11 +1585,11 @@ export default function CashLedgerDashboard() {
                   </button>
                 </div>
               ) : (
-                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                <div className={`border rounded-xl overflow-hidden shadow-sm transition-colors ${darkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[600px]">
                       <thead>
-                        <tr className="bg-slate-100 text-slate-600 text-[10px] uppercase font-black border-b border-slate-200">
+                        <tr className={`text-[10px] uppercase font-black border-b transition-colors ${darkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
                           <th className="p-3.5">Invoice No</th>
                           <th className="p-3.5">Date</th>
                           <th className="p-3.5">Customer Name</th>
@@ -1592,21 +1598,21 @@ export default function CashLedgerDashboard() {
                           <th className="p-3.5 text-center">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                      <tbody className={`divide-y text-xs font-medium transition-colors ${darkMode ? 'divide-slate-800 text-slate-200' : 'divide-slate-100'}`}>
                         {invoices.map((inv) => (
-                          <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="p-3.5 font-mono font-bold text-slate-900">{inv.invoiceNumber}</td>
-                            <td className="p-3.5 text-slate-500 font-mono">{new Date(inv.date).toLocaleDateString('en-IN')}</td>
-                            <td className="p-3.5 font-bold text-slate-800">{inv.customerName}</td>
-                            <td className="p-3.5 text-slate-600">
+                          <tr key={inv.id} className={`transition-colors ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
+                            <td className={`p-3.5 font-mono font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{inv.invoiceNumber}</td>
+                            <td className="p-3.5 text-slate-400 font-mono">{new Date(inv.date).toLocaleDateString('en-IN')}</td>
+                            <td className={`p-3.5 font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{inv.customerName}</td>
+                            <td className="p-3.5 text-slate-400">
                               {inv.items ? `${inv.items.length} item(s)` : `${inv.itemName} (Qty: ${inv.quantity})`}
                             </td>
-                            <td className="p-3.5 text-right font-black text-emerald-600">Rs. {inv.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className="p-3.5 text-right font-black text-emerald-500">Rs. {inv.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                             <td className="p-3.5 text-center flex items-center justify-center gap-2">
                               <button 
                                 onClick={() => handleProAction(() => executeDownloadInvoicePDF(inv))}
                                 title="Download A4 PDF"
-                                className="bg-slate-900 hover:bg-sky-600 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                                className="bg-slate-800 hover:bg-sky-600 text-slate-200 hover:text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-1 transition-all cursor-pointer border border-slate-700 shadow-sm"
                               >
                                 <Download size={11} /> A4
                               </button>
@@ -1629,11 +1635,11 @@ export default function CashLedgerDashboard() {
           )}
 
           {activeTab === 'inventory' && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+            <div className={`rounded-2xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-4">
                 <div>
-                  <h3 className="text-base md:text-lg font-bold text-slate-900">Inventory & Stock</h3>
-                  <p className="text-xs text-slate-500 font-semibold">Manage store items and monitor stock levels</p>
+                  <h3 className="text-base md:text-lg font-bold">Inventory & Stock</h3>
+                  <p className="text-xs text-slate-400 font-semibold">Manage store items and monitor stock levels</p>
                 </div>
                 <button 
                   onClick={() => { setEditingItem(null); setInvItemName(''); setInvStockQty(''); setInvItemPrice(''); setShowInventoryModal(true); }}
@@ -1644,9 +1650,9 @@ export default function CashLedgerDashboard() {
               </div>
 
               {inventory.length === 0 ? (
-                <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-2xl">
-                  <Package size={40} className="mx-auto text-slate-300 mb-3" />
-                  <p className="font-bold text-slate-700 text-sm">No Stock Items Added Yet</p>
+                <div className="text-center py-16 border-2 border-dashed border-slate-800 rounded-2xl">
+                  <Package size={40} className="mx-auto text-slate-600 mb-3" />
+                  <p className="font-bold text-slate-400 text-sm">No Stock Items Added Yet</p>
                   <button 
                     onClick={() => { setEditingItem(null); setInvItemName(''); setInvStockQty(''); setInvItemPrice(''); setShowInventoryModal(true); }}
                     className="mt-3 bg-sky-600 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer"
@@ -1655,11 +1661,11 @@ export default function CashLedgerDashboard() {
                   </button>
                 </div>
               ) : (
-                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                <div className={`border rounded-xl overflow-hidden shadow-sm transition-colors ${darkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[600px]">
                       <thead>
-                        <tr className="bg-slate-100 text-slate-600 text-[10px] uppercase font-black border-b border-slate-200">
+                        <tr className={`text-[10px] uppercase font-black border-b transition-colors ${darkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
                           <th className="p-3.5">Item Name</th>
                           <th className="p-3.5">Available Stock</th>
                           <th className="p-3.5 text-right">Selling Price (Rs.)</th>
@@ -1667,19 +1673,19 @@ export default function CashLedgerDashboard() {
                           <th className="p-3.5 text-center">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                      <tbody className={`divide-y text-xs font-medium transition-colors ${darkMode ? 'divide-slate-800 text-slate-200' : 'divide-slate-100'}`}>
                         {inventory.map((item) => (
-                          <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="p-3.5 font-bold text-slate-900">{item.name}</td>
-                            <td className="p-3.5 font-mono font-bold text-slate-700">{item.stock} units</td>
-                            <td className="p-3.5 text-right font-bold text-slate-800">Rs. {item.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                          <tr key={item.id} className={`transition-colors ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
+                            <td className={`p-3.5 font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{item.name}</td>
+                            <td className="p-3.5 font-mono font-bold text-slate-400">{item.stock} units</td>
+                            <td className={`p-3.5 text-right font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Rs. {item.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                             <td className="p-3.5 text-center">
                               {item.stock <= 5 ? (
-                                <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-[10px] font-black uppercase inline-flex items-center gap-1">
+                                <span className="bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded text-[10px] font-black uppercase inline-flex items-center gap-1">
                                   <AlertTriangle size={10} /> Low Stock
                                 </span>
                               ) : (
-                                <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-black uppercase">
+                                <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-black uppercase">
                                   In Stock
                                 </span>
                               )}
@@ -1694,7 +1700,7 @@ export default function CashLedgerDashboard() {
                                   setShowInventoryModal(true);
                                 }}
                                 title="Edit Stock"
-                                className="text-sky-600 hover:text-sky-800 p-1 cursor-pointer"
+                                className="text-sky-400 hover:text-sky-300 p-1 cursor-pointer"
                               >
                                 <Edit3 size={15} />
                               </button>
@@ -1705,7 +1711,7 @@ export default function CashLedgerDashboard() {
                                   }
                                 }}
                                 title="Delete Item"
-                                className="text-rose-500 hover:text-rose-700 p-1 cursor-pointer"
+                                className="text-rose-400 hover:text-rose-300 p-1 cursor-pointer"
                               >
                                 <Trash2 size={15} />
                               </button>
@@ -1721,23 +1727,23 @@ export default function CashLedgerDashboard() {
           )}
 
           {activeTab === 'reports' && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900 mb-1">Download Account Statements</h3>
-              <p className="text-xs text-slate-500 mb-6">Generate and download filtered PDF account reports</p>
+            <div className={`rounded-2xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
+              <h3 className="text-lg font-bold mb-1">Download Account Statements</h3>
+              <p className="text-xs text-slate-400 mb-6">Generate and download filtered PDF account reports</p>
 
-              <div className="p-6 border border-slate-200/80 rounded-2xl hover:border-sky-500 transition-all bg-slate-50/30 max-w-md relative">
+              <div className={`p-6 border rounded-2xl transition-all max-w-md relative ${darkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50/30 border-slate-200/80'}`}>
                 {!isPro && (
                   <span className="absolute top-4 right-4 bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[10px] font-extrabold flex items-center gap-1">
                     <Crown size={12} /> PRO FEATURE
                   </span>
                 )}
-                <FileText size={32} className="text-sky-600 mb-3" />
-                <h4 className="font-bold text-slate-900 text-base">PDF Account Statement</h4>
-                <p className="text-xs text-slate-500 mt-1 mb-5">Printable A4 PDF statement</p>
+                <FileText size={32} className="text-sky-400 mb-3" />
+                <h4 className="font-bold text-base">PDF Account Statement</h4>
+                <p className="text-xs text-slate-400 mt-1 mb-5">Printable A4 PDF statement</p>
                 
                 <button 
                   onClick={() => handleProAction(executeDownloadPDF)}
-                  className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all w-full sm:w-auto"
+                  className="bg-slate-800 hover:bg-slate-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all w-full sm:w-auto border border-slate-700"
                 >
                   <Download size={15} /> Download PDF
                 </button>
@@ -1747,63 +1753,63 @@ export default function CashLedgerDashboard() {
 
           {activeTab === 'settings' && (
             <div className="space-y-6 max-w-2xl">
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-6 md:p-8 shadow-sm">
-                <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+              <div className={`rounded-2xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
+                <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900">Store & Subscription</h3>
-                    <p className="text-xs text-slate-500">Manage your business profile and plan</p>
+                    <h3 className="text-lg font-bold">Store & Subscription</h3>
+                    <p className="text-xs text-slate-400">Manage your business profile and plan</p>
                   </div>
-                  <div className="bg-slate-100 px-3 py-1.5 rounded-xl flex items-center gap-2">
-                    <Crown size={15} className={isPro ? "text-amber-500" : "text-slate-400"} />
-                    <span className="text-xs font-bold text-slate-700">{isPro ? "PRO Plan Active" : "Free Plan"}</span>
+                  <div className={`px-3 py-1.5 rounded-xl flex items-center gap-2 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
+                    <Crown size={15} className={isPro ? "text-amber-400" : "text-slate-400"} />
+                    <span className={`text-xs font-bold ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{isPro ? "PRO Plan Active" : "Free Plan"}</span>
                   </div>
                 </div>
 
                 {saveSuccess && (
-                  <div className="mb-4 p-3 bg-emerald-50 text-emerald-800 rounded-xl font-bold text-xs flex items-center gap-2">
+                  <div className="mb-4 p-3 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-xl font-bold text-xs flex items-center gap-2">
                     <CheckCircle2 size={16} /> Business Profile Saved
                   </div>
                 )}
 
                 <form onSubmit={handleSaveProfile} className="space-y-4">
                   <div>
-                    <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Business / Firm Name</label>
+                    <label className="block text-[11px] font-black uppercase mb-1 text-slate-400">Business / Firm Name</label>
                     <input 
                       type="text" 
                       required
                       value={businessName} 
                       onChange={(e) => setBusinessName(e.target.value)}
                       placeholder="Enter business name"
-                      className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500" 
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Phone Number</label>
+                    <label className="block text-[11px] font-black uppercase mb-1 text-slate-400">Phone Number</label>
                     <input 
                       type="text" 
                       value={phone} 
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="Enter contact number"
-                      className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500" 
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">Address</label>
+                    <label className="block text-[11px] font-black uppercase mb-1 text-slate-400">Address</label>
                     <input 
                       type="text" 
                       value={address} 
                       onChange={(e) => setAddress(e.target.value)}
                       placeholder="Enter business address"
-                      className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500" 
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
                     />
                   </div>
 
-                  <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+                  <div className="flex justify-between items-center pt-4 border-t border-slate-800">
                     <button 
                       type="submit"
-                      className="bg-slate-950 text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer w-full sm:w-auto text-center"
+                      className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer w-full sm:w-auto text-center border border-slate-700 transition-all"
                     >
                       Save Changes
                     </button>
@@ -1812,12 +1818,12 @@ export default function CashLedgerDashboard() {
               </div>
 
               {/* RESET / DANGER ZONE */}
-              <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 md:p-8 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <RotateCcw size={18} className="text-rose-600" />
-                  <h3 className="text-base font-bold text-rose-900">Reset Account Data</h3>
+              <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-6 md:p-8 shadow-sm">
+                <div className="flex items-center gap-2 mb-2 text-rose-400">
+                  <RotateCcw size={18} />
+                  <h3 className="text-base font-bold">Reset Account Data</h3>
                 </div>
-                <p className="text-xs text-rose-700 mb-5 font-medium">
+                <p className="text-xs text-rose-300 mb-5 font-medium">
                   Permanently delete all your daily transactions, customer party ledger accounts, and tax invoices. This action cannot be undone.
                 </p>
                 <button 
@@ -1834,43 +1840,43 @@ export default function CashLedgerDashboard() {
 
       {/* UPGRADE PAYWALL MODAL */}
       {showUpgradeModal && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 text-center relative overflow-hidden space-y-6">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center relative overflow-hidden space-y-6 text-white">
             <button 
               onClick={() => setShowUpgradeModal(false)}
-              className="absolute top-4 right-4 bg-slate-100 hover:bg-slate-200 p-2 rounded-full text-slate-500 cursor-pointer transition-all"
+              className="absolute top-4 right-4 bg-slate-800 hover:bg-slate-700 p-2 rounded-full text-slate-300 cursor-pointer transition-all"
             >
               <X size={16} />
             </button>
 
-            <div className="w-14 h-14 bg-amber-500/10 text-amber-500 rounded-2xl mx-auto flex items-center justify-center border border-amber-500/20">
+            <div className="w-14 h-14 bg-amber-500/10 text-amber-400 rounded-2xl mx-auto flex items-center justify-center border border-amber-500/20">
               <Crown size={28} />
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-xl font-black text-slate-900 tracking-tight">Unlock CashLedger PRO</h3>
-              <p className="text-xs text-slate-500 font-medium">Get unlimited PDF invoices, statements, analytics & WhatsApp reminders.</p>
+              <h3 className="text-xl font-black tracking-tight">Unlock CashLedger PRO</h3>
+              <p className="text-xs text-slate-400 font-medium">Get unlimited PDF invoices, statements, analytics & WhatsApp reminders.</p>
             </div>
 
             <div className="space-y-3">
-              <div className="p-4 rounded-2xl border-2 border-sky-500 bg-sky-50/50 flex justify-between items-center cursor-pointer">
+              <div className="p-4 rounded-2xl border-2 border-sky-500 bg-sky-500/10 flex justify-between items-center cursor-pointer">
                 <div className="text-left">
                   <span className="text-[10px] font-black bg-sky-600 text-white px-2 py-0.5 rounded uppercase">Best Value</span>
-                  <div className="font-extrabold text-sm text-slate-900 mt-1">Yearly Plan</div>
-                  <div className="text-[11px] text-slate-500">Billed Rs. 599 annually</div>
+                  <div className="font-extrabold text-sm mt-1">Yearly Plan</div>
+                  <div className="text-[11px] text-slate-400">Billed Rs. 599 annually</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-black text-sky-600">Rs. 50<span className="text-xs font-normal text-slate-500">/mo</span></div>
+                  <div className="text-lg font-black text-sky-400">Rs. 50<span className="text-xs font-normal text-slate-400">/mo</span></div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl border border-slate-200 hover:border-slate-300 bg-white flex justify-between items-center cursor-pointer">
+              <div className="p-4 rounded-2xl border border-slate-800 hover:border-slate-700 bg-slate-950 flex justify-between items-center cursor-pointer">
                 <div className="text-left">
-                  <div className="font-extrabold text-sm text-slate-900">Monthly Plan</div>
-                  <div className="text-[11px] text-slate-500">Cancel anytime</div>
+                  <div className="font-extrabold text-sm">Monthly Plan</div>
+                  <div className="text-[11px] text-slate-400">Cancel anytime</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-black text-slate-900">Rs. 99<span className="text-xs font-normal text-slate-500">/mo</span></div>
+                  <div className="text-lg font-black">Rs. 99<span className="text-xs font-normal text-slate-400">/mo</span></div>
                 </div>
               </div>
             </div>
@@ -1879,26 +1885,26 @@ export default function CashLedgerDashboard() {
               onClick={() => {
                 alert("Payment Gateway Integration (Razorpay/UPI) will be triggered here.");
               }}
-              className="w-full bg-slate-950 hover:bg-slate-900 text-white font-extrabold py-3.5 rounded-2xl text-xs uppercase tracking-wider shadow-lg cursor-pointer transition-all flex items-center justify-center gap-2"
+              className="w-full bg-sky-600 hover:bg-sky-500 text-white font-extrabold py-3.5 rounded-2xl text-xs uppercase tracking-wider shadow-lg cursor-pointer transition-all flex items-center justify-center gap-2"
             >
-              <Sparkles size={16} className="text-amber-400" /> Upgrade Now
+              <Sparkles size={16} className="text-amber-300" /> Upgrade Now
             </button>
 
-            <p className="text-[10px] text-slate-400 font-medium">Secure payments powered by UPI & Cards.</p>
+            <p className="text-[10px] text-slate-500 font-medium">Secure payments powered by UPI & Cards.</p>
           </div>
         </div>
       )}
 
       {/* Add Transaction Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
-            <h3 className={`text-base font-extrabold uppercase tracking-wider mb-4 ${txnType === 'CASH_IN' ? 'text-emerald-600' : 'text-rose-600'}`}>
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 text-white">
+            <h3 className={`text-base font-extrabold uppercase tracking-wider mb-4 ${txnType === 'CASH_IN' ? 'text-emerald-400' : 'text-rose-400'}`}>
               {activeTab === 'parties' && selectedParty ? `${txnType === 'CASH_IN' ? '+ Received From' : '- Given To'} ${selectedParty.name}` : (txnType === 'CASH_IN' ? '+ Record Cash In Entry' : '- Record Cash Out Entry')}
             </h3>
             <form onSubmit={handleAddTransaction} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Amount (Rs.)</label>
+                <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Amount (Rs.)</label>
                 <input 
                   type="number" 
                   step="0.01"
@@ -1906,17 +1912,17 @@ export default function CashLedgerDashboard() {
                   value={amount} 
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-lg font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Payment Method</label>
+                  <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Payment Method</label>
                   <select 
                     value={paymentMode} 
                     onChange={(e) => setPaymentMode(e.target.value)}
-                    className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
                   >
                     <option value="Cash">Cash</option>
                     <option value="UPI">UPI</option>
@@ -1926,11 +1932,11 @@ export default function CashLedgerDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Category</label>
+                  <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Category</label>
                   <select 
                     value={category} 
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
                   >
                     {txnType === 'CASH_IN' ? (
                       <>
@@ -1953,21 +1959,21 @@ export default function CashLedgerDashboard() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Particulars / Remarks</label>
+                <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Particulars / Remarks</label>
                 <input 
                   type="text" 
                   value={remarks} 
                   onChange={(e) => setRemarks(e.target.value)}
                   placeholder={activeTab === 'parties' && selectedParty ? `e.g. Received for bill` : "Enter entry details"}
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
                 <button 
                   type="button" 
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase cursor-pointer"
+                  className="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-bold text-xs uppercase cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1985,36 +1991,36 @@ export default function CashLedgerDashboard() {
 
       {/* Add Party Modal */}
       {showAddPartyModal && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
-            <h3 className="text-base font-extrabold uppercase mb-4 text-slate-900">Add New Party</h3>
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 text-white">
+            <h3 className="text-base font-extrabold uppercase mb-4">Add New Party</h3>
             <form onSubmit={handleAddParty} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Party / Customer Name</label>
+                <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Party / Customer Name</label>
                 <input 
                   type="text" 
                   required 
                   value={partyName} 
                   onChange={(e) => setPartyName(e.target.value)}
                   placeholder="Enter party name"
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Phone Number</label>
+                <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Phone Number</label>
                 <input 
                   type="text" 
                   value={partyPhone} 
                   onChange={(e) => setPartyPhone(e.target.value)}
                   placeholder="Enter phone number"
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                 />
               </div>
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
                 <button 
                   type="button" 
                   onClick={() => setShowAddPartyModal(false)}
-                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase cursor-pointer"
+                  className="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-bold text-xs uppercase cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -2032,26 +2038,26 @@ export default function CashLedgerDashboard() {
 
       {/* Add / Edit Inventory Item Modal */}
       {showInventoryModal && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
-            <h3 className="text-base font-extrabold uppercase mb-4 text-slate-900 flex items-center gap-2">
-              <Package size={18} className="text-sky-600" /> {editingItem ? 'Edit Stock Item' : 'Add Stock Item'}
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 text-white">
+            <h3 className="text-base font-extrabold uppercase mb-4 flex items-center gap-2">
+              <Package size={18} className="text-sky-400" /> {editingItem ? 'Edit Stock Item' : 'Add Stock Item'}
             </h3>
             <form onSubmit={handleSaveInventoryItem} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Item Name</label>
+                <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Item Name</label>
                 <input 
                   type="text" 
                   required 
                   value={invItemName} 
                   onChange={(e) => setInvItemName(e.target.value)}
                   placeholder="e.g. KitKat Chocolate"
-                  className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Stock Quantity</label>
+                  <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Stock Quantity</label>
                   <input 
                     type="number" 
                     min="0"
@@ -2059,11 +2065,11 @@ export default function CashLedgerDashboard() {
                     value={invStockQty} 
                     onChange={(e) => setInvStockQty(e.target.value)}
                     placeholder="e.g. 20"
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Selling Price (Rs.)</label>
+                  <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Selling Price (Rs.)</label>
                   <input 
                     type="number" 
                     step="0.01"
@@ -2071,15 +2077,15 @@ export default function CashLedgerDashboard() {
                     value={invItemPrice} 
                     onChange={(e) => setInvItemPrice(e.target.value)}
                     placeholder="0.00"
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                   />
                 </div>
               </div>
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
                 <button 
                   type="button" 
                   onClick={() => setShowInventoryModal(false)}
-                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase cursor-pointer"
+                  className="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-bold text-xs uppercase cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -2097,30 +2103,30 @@ export default function CashLedgerDashboard() {
 
       {/* Create Multi-Item Invoice Modal with GST Selection */}
       {showInvoiceModal && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-base font-extrabold uppercase mb-4 text-slate-900 flex items-center gap-2">
-              <Receipt size={18} className="text-sky-600" /> Create Tax Invoice with GST
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto text-white">
+            <h3 className="text-base font-extrabold uppercase mb-4 flex items-center gap-2">
+              <Receipt size={18} className="text-sky-400" /> Create Tax Invoice with GST
             </h3>
             <form onSubmit={handleCreateInvoice} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">Customer Name</label>
+                  <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Customer Name</label>
                   <input 
                     type="text" 
                     required 
                     value={invCustomerName} 
                     onChange={(e) => setInvCustomerName(e.target.value)}
                     placeholder="Enter customer name"
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-600 uppercase mb-1">GST Rate (%)</label>
+                  <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">GST Rate (%)</label>
                   <select 
                     value={gstRate} 
                     onChange={(e) => setGstRate(e.target.value)}
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
                   >
                     <option value="0">0% GST (No Tax)</option>
                     <option value="5">5% GST (2.5% CGST + 2.5% SGST)</option>
@@ -2132,25 +2138,25 @@ export default function CashLedgerDashboard() {
 
               <div className="space-y-3 pt-2">
                 <div className="flex justify-between items-center">
-                  <label className="text-[11px] font-black text-slate-700 uppercase">Products / Items List</label>
+                  <label className="text-[11px] font-black uppercase text-slate-400">Products / Items List</label>
                   <button 
                     type="button" 
                     onClick={handleAddItemRow}
-                    className="text-xs bg-sky-50 text-sky-600 border border-sky-200 px-3 py-1 rounded-lg font-bold hover:bg-sky-100 cursor-pointer"
+                    className="text-xs bg-sky-500/10 text-sky-400 border border-sky-500/20 px-3 py-1 rounded-lg font-bold hover:bg-sky-500/20 cursor-pointer"
                   >
                     + Add Item
                   </button>
                 </div>
 
                 {itemsList.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <div key={index} className="flex items-center gap-2 bg-slate-800/60 p-3 rounded-xl border border-slate-700">
                     <input 
                       type="text" 
                       required
                       placeholder="Item name" 
                       value={item.name}
                       onChange={(e) => handleItemChange(index, 'name', e.target.value)}
-                      className="flex-1 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 bg-white"
+                      className="flex-1 border border-slate-700 bg-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-white placeholder-slate-500"
                     />
                     <input 
                       type="number" 
@@ -2159,7 +2165,7 @@ export default function CashLedgerDashboard() {
                       placeholder="Qty" 
                       value={item.qty}
                       onChange={(e) => handleItemChange(index, 'qty', e.target.value)}
-                      className="w-16 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 bg-white"
+                      className="w-16 border border-slate-700 bg-slate-800 rounded-lg px-2 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-white placeholder-slate-500"
                     />
                     <input 
                       type="number" 
@@ -2168,13 +2174,13 @@ export default function CashLedgerDashboard() {
                       placeholder="Price" 
                       value={item.price}
                       onChange={(e) => handleItemChange(index, 'price', e.target.value)}
-                      className="w-24 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 bg-white"
+                      className="w-24 border border-slate-700 bg-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-white placeholder-slate-500"
                     />
                     {itemsList.length > 1 && (
                       <button 
                         type="button" 
                         onClick={() => handleRemoveItemRow(index)}
-                        className="text-rose-500 hover:text-rose-700 p-1 cursor-pointer"
+                        className="text-rose-400 hover:text-rose-300 p-1 cursor-pointer"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -2183,11 +2189,11 @@ export default function CashLedgerDashboard() {
                 ))}
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
                 <button 
                   type="button" 
                   onClick={() => setShowInvoiceModal(false)}
-                  className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 font-bold text-xs uppercase cursor-pointer"
+                  className="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-bold text-xs uppercase cursor-pointer"
                 >
                   Cancel
                 </button>
