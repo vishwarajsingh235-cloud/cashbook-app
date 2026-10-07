@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle, Edit3, Percent, Printer, Moon, Sun 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle, Edit3, Percent, Printer, Moon, Sun, Lock, ShieldCheck 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
@@ -16,6 +16,13 @@ export default function CashLedgerDashboard() {
   const [isPro, setIsPro] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+
+  // Security PIN States
+  const [userPin, setUserPin] = useState('');
+  const [isLocked, setIsLocked] = useState(false);
+  const [enteredPin, setEnteredPin] = useState('');
+  const [newPinInput, setNewPinInput] = useState('');
+  const [pinSuccess, setPinSuccess] = useState(false);
 
   const [activeTab, setActiveTab] = useState('daybook');
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -65,7 +72,7 @@ export default function CashLedgerDashboard() {
   const [address, setAddress] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // 1. Auth Listener & Pro Check with Developer Bypass
+  // 1. Auth Listener & Profile / PIN Fetch
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
@@ -88,7 +95,7 @@ export default function CashLedgerDashboard() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Fetch User Data
+  // 2. Fetch User Data & Security PIN
   useEffect(() => {
     if (!user) {
       setTransactions([]);
@@ -96,6 +103,8 @@ export default function CashLedgerDashboard() {
       setInvoices([]);
       setInventory([]);
       setSelectedParty(null);
+      setUserPin('');
+      setIsLocked(false);
       return;
     }
 
@@ -138,6 +147,10 @@ export default function CashLedgerDashboard() {
         if (user.email !== 'vishwarajsingh234@gmail.com') {
           setIsPro(p.isPro || false);
         }
+        if (p.appPin) {
+          setUserPin(p.appPin);
+          setIsLocked(true); // Lock app if PIN exists
+        }
       } else {
         setBusinessName(user.displayName || 'My Business');
         setEmail(user.email || '');
@@ -174,6 +187,56 @@ export default function CashLedgerDashboard() {
       action();
     } else {
       setShowUpgradeModal(true);
+    }
+  };
+
+  // Set or Update Security PIN
+  const handleSavePin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || newPinInput.length !== 4) {
+      alert("Please enter a valid 4-digit PIN.");
+      return;
+    }
+
+    try {
+      await setDoc(doc(db, 'profiles', user.uid), {
+        appPin: newPinInput
+      }, { merge: true });
+
+      setUserPin(newPinInput);
+      setPinSuccess(true);
+      setNewPinInput('');
+      setTimeout(() => setPinSuccess(false), 3000);
+    } catch (err) {
+      alert("Failed to set security PIN.");
+    }
+  };
+
+  // Remove Security PIN
+  const handleRemovePin = async () => {
+    if (!user || !window.confirm("Are you sure you want to remove the security PIN lock?")) return;
+
+    try {
+      await setDoc(doc(db, 'profiles', user.uid), {
+        appPin: null
+      }, { merge: true });
+
+      setUserPin('');
+      alert("Security PIN removed successfully.");
+    } catch (err) {
+      alert("Failed to remove PIN.");
+    }
+  };
+
+  // Unlock App
+  const handleUnlockApp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (enteredPin === userPin) {
+      setIsLocked(false);
+      setEnteredPin('');
+    } else {
+      alert("Incorrect PIN! Please try again.");
+      setEnteredPin('');
     }
   };
 
@@ -939,6 +1002,49 @@ export default function CashLedgerDashboard() {
     );
   }
 
+  // SECURITY PIN LOCK SCREEN OVERLAY
+  if (isLocked) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 font-sans antialiased text-white">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center space-y-6">
+          <div className="w-16 h-16 bg-sky-500/10 text-sky-400 rounded-2xl mx-auto flex items-center justify-center border border-sky-500/20">
+            <Lock size={30} />
+          </div>
+
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold">App is Locked</h1>
+            <p className="text-xs text-slate-400 font-medium">Enter your 4-digit security PIN to access CashLedger</p>
+          </div>
+
+          <form onSubmit={handleUnlockApp} className="space-y-4">
+            <input 
+              type="password" 
+              maxLength={4}
+              required
+              value={enteredPin}
+              onChange={(e) => setEnteredPin(e.target.value)}
+              placeholder="••••"
+              className="w-full text-center tracking-[1em] text-2xl border border-slate-700 bg-slate-800 rounded-xl py-3 focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
+            />
+            <button 
+              type="submit"
+              className="w-full bg-sky-600 hover:bg-sky-500 text-white font-extrabold py-3 rounded-xl text-xs uppercase tracking-wider shadow-lg cursor-pointer transition-all"
+            >
+              Unlock App
+            </button>
+          </form>
+
+          <button 
+            onClick={handleLogout}
+            className="text-[11px] text-slate-500 hover:text-slate-400 underline cursor-pointer font-semibold"
+          >
+            Sign out of account
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`flex flex-col min-h-screen font-sans antialiased md:flex-row transition-colors ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
       <style jsx global>{`
@@ -1125,7 +1231,7 @@ export default function CashLedgerDashboard() {
                 {activeTab === 'invoices' && 'Tax Invoice Generator'}
                 {activeTab === 'inventory' && 'Inventory & Stock Management'}
                 {activeTab === 'reports' && 'Reports & Statements'}
-                {activeTab === 'settings' && 'Store Profile'}
+                {activeTab === 'settings' && 'Store Profile & Security'}
               </h2>
               {isPro && (
                 <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-black text-[10px] flex items-center gap-1 border border-amber-200">
@@ -1813,6 +1919,56 @@ export default function CashLedgerDashboard() {
                     >
                       Save Changes
                     </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* SECURITY PIN SETUP SECTION */}
+              <div className={`rounded-2xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
+                <div className="flex items-center gap-2 mb-2 text-sky-400">
+                  <ShieldCheck size={18} />
+                  <h3 className="text-base font-bold">App Security PIN Lock</h3>
+                </div>
+                <p className="text-xs text-slate-400 mb-4 font-medium">
+                  {userPin ? "A 4-digit security PIN is currently active on your account." : "Set a 4-digit PIN to secure your cashbook from unauthorized access."}
+                </p>
+
+                {pinSuccess && (
+                  <div className="mb-4 p-3 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-xl font-bold text-xs">
+                    Security PIN updated successfully!
+                  </div>
+                )}
+
+                <form onSubmit={handleSavePin} className="space-y-4">
+                  <div>
+                    <label className="block text-[11px] font-black uppercase mb-1 text-slate-400">New 4-Digit PIN</label>
+                    <input 
+                      type="password" 
+                      maxLength={4}
+                      required
+                      value={newPinInput}
+                      onChange={(e) => setNewPinInput(e.target.value)}
+                      placeholder="••••"
+                      className={`w-full border rounded-xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900'}`}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button 
+                      type="submit"
+                      className="bg-sky-600 hover:bg-sky-500 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase shadow-md cursor-pointer transition-all"
+                    >
+                      {userPin ? 'Update PIN' : 'Set PIN Lock'}
+                    </button>
+                    {userPin && (
+                      <button 
+                        type="button"
+                        onClick={handleRemovePin}
+                        className="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 px-4 py-2.5 rounded-xl font-bold text-xs uppercase cursor-pointer transition-all"
+                      >
+                        Remove PIN
+                      </button>
+                    )}
                   </div>
                 </form>
               </div>
