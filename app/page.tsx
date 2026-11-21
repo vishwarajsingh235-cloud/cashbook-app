@@ -11,6 +11,38 @@ import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query, where
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import QRCode from 'qrcode';
 
+// Current Indian GST slabs (0%, 5%, 18%, 40%) auto-detection for common retail & grocery items
+const detectAutoGstRate = (itemName: string): number => {
+  const name = (itemName || '').toLowerCase().trim();
+  if (!name) return 5;
+
+  // 40% slab: aerated / sweetened carbonated & energy drinks
+  if (/(cold drink|aerated|cola|pepsi|sprite|fanta|thums up|mirinda|soda|energy drink|red bull)/.test(name)) {
+    return 40;
+  }
+
+  // 18% slab: detergents, dish/laundry soaps, cleaners, vinegar
+  if (/(detergent|surf|tide|rin|wheel|ariel|washing powder|dishwash|vim|cleaner|harpic|lizol|vinegar)/.test(name)) {
+    return 18;
+  }
+
+  // 0% slab: fresh/basic unbranded/exempt staples (milk, paneer, bread, salt, curd, fresh veg/fruits)
+  if (/(milk|doodh|paneer|curd|dahi|lassi|chaach|bread|roti|paratha|salt|namak|egg|anda|vegetable|sabzi|fruit)/.test(name)) {
+    // Pre-packaged branded atta/rice/dal often attract 5% when packaged & labelled
+    if (/(packaged|packet|brand|branded|ashirvaad|aashirvaad|fortune|india gate|daawat)/.test(name)) {
+      return 5;
+    }
+    return 0;
+  }
+
+  // 5% slab: chocolates (KitKat, Dairy Milk), biscuits, namkeen, edible oil, sugar, tea, coffee, packaged atta/rice/dal
+  if (/(kitkat|kit kat|dairy milk|cadbury|chocolate|biscuit|cookie|namkeen|bhujia|chips|atta|aata|flour|rice|chawal|dal|sugar|chini|oil|tel|ghee|tea|chai|coffee|spice|masala)/.test(name)) {
+    return 5;
+  }
+
+  return 5;
+};
+
 export default function CashLedgerDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,17 +86,18 @@ export default function CashLedgerDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [partySearchTerm, setPartySearchTerm] = useState('');
 
-  // Inventory Form Fields
+  // Inventory Form Fields (with Auto GST)
   const [invItemName, setInvItemName] = useState('');
   const [invStockQty, setInvStockQty] = useState('');
   const [invItemPrice, setInvItemPrice] = useState('');
+  const [invItemGst, setInvItemGst] = useState('5');
+  const [invGstManual, setInvGstManual] = useState(false);
 
-  // Multi-Item Invoice Form States with Mobile & GST
+  // Multi-Item Invoice Form States (with Auto Item-wise GST)
   const [invCustomerName, setInvCustomerName] = useState('');
   const [invCustomerPhone, setInvCustomerPhone] = useState('');
-  const [gstRate, setGstRate] = useState('0');
   const [itemsList, setItemsList] = useState<any[]>([
-    { name: '', qty: '1', price: '' }
+    { name: '', qty: '1', price: '', gstRate: 5, gstManual: false }
   ]);
 
   // Profile Fields (including UPI ID)
@@ -194,7 +227,6 @@ export default function CashLedgerDashboard() {
     }
   };
 
-  // Helper: Generate UPI Intent QR Data URL
   const generateUpiQrDataUrl = async (totalAmount: number, invoiceNumber: string) => {
     const cleanUpi = upiId.trim();
     if (!cleanUpi) return null;
@@ -288,16 +320,26 @@ export default function CashLedgerDashboard() {
     }
   };
 
+  const handleInventoryNameChange = (val: string) => {
+    setInvItemName(val);
+    if (!invGstManual) {
+      setInvItemGst(String(detectAutoGstRate(val)));
+    }
+  };
+
   const handleSaveInventoryItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !invItemName || !invStockQty || !invItemPrice) return;
+
+    const computedGst = invGstManual ? parseFloat(invItemGst || '0') : detectAutoGstRate(invItemName);
 
     try {
       if (editingItem) {
         await updateDoc(doc(db, 'inventory', editingItem.id), {
           name: invItemName,
           stock: parseInt(invStockQty),
-          price: parseFloat(invItemPrice)
+          price: parseFloat(invItemPrice),
+          gstRate: computedGst
         });
       } else {
         const itemId = `item_${Date.now()}`;
@@ -305,7 +347,8 @@ export default function CashLedgerDashboard() {
           userId: user.uid,
           name: invItemName,
           stock: parseInt(invStockQty),
-          price: parseFloat(invItemPrice)
+          price: parseFloat(invItemPrice),
+          gstRate: computedGst
         });
       }
       setShowInventoryModal(false);
@@ -313,6 +356,8 @@ export default function CashLedgerDashboard() {
       setInvItemName('');
       setInvStockQty('');
       setInvItemPrice('');
+      setInvItemGst('5');
+      setInvGstManual(false);
     } catch (err) {
       alert('Failed to save inventory item.');
     }
@@ -414,7 +459,7 @@ export default function CashLedgerDashboard() {
   };
 
   const handleAddItemRow = () => {
-    setItemsList([...itemsList, { name: '', qty: '1', price: '' }]);
+    setItemsList([...itemsList, { name: '', qty: '1', price: '', gstRate: 5, gstManual: false }]);
   };
 
   const handleRemoveItemRow = (index: number) => {
@@ -424,10 +469,71 @@ export default function CashLedgerDashboard() {
     setItemsList(list);
   };
 
-  const handleItemChange = (index: number, field: string, value: string) => {
+  const handleItemChange = (index: number, field: string, value: string | number | boolean) => {
     const list = [...itemsList];
     list[index][field] = value;
+
+    if (field === 'name' && typeof value === 'string') {
+      const matchedInv = inventory.find(i => i.name.toLowerCase() === value.toLowerCase().trim());
+      if (matchedInv) {
+        if (!list[index].price) {
+          list[index].price = String(matchedInv.price);
+        }
+        if (!list[index].gstManual) {
+          list[index].gstRate = matchedInv.gstRate ?? detectAutoGstRate(value);
+        }
+      } else if (!list[index].gstManual) {
+        list[index].gstRate = detectAutoGstRate(value);
+      }
+    }
+
+    if (field === 'gstRate') {
+      list[index].gstRate = parseFloat(String(value));
+      list[index].gstManual = true;
+    }
+
     setItemsList(list);
+  };
+
+  // Live Invoice Totals with Item-wise Automatic GST
+  const computeInvoiceBreakdown = (rawItems: any[]) => {
+    let subTotal = 0;
+    let gstAmount = 0;
+
+    const formattedItems = rawItems.map((item: any) => {
+      const q = Math.max(1, parseInt(item.qty || '1', 10) || 1);
+      const p = Math.max(0, parseFloat(item.price || '0') || 0);
+      const lineSubTotal = q * p;
+      const rate = item.gstRate !== undefined && item.gstRate !== null
+        ? Number(item.gstRate)
+        : detectAutoGstRate(item.name || '');
+      const lineGst = (lineSubTotal * rate) / 100;
+      const lineTotal = lineSubTotal + lineGst;
+
+      subTotal += lineSubTotal;
+      gstAmount += lineGst;
+
+      return {
+        name: item.name || 'Item',
+        qty: q,
+        price: p,
+        gstRate: rate,
+        gstAmount: lineGst,
+        subTotal: lineSubTotal,
+        total: lineTotal
+      };
+    });
+
+    const grandTotal = subTotal + gstAmount;
+    const effectiveGstRate = subTotal > 0 ? Number(((gstAmount / subTotal) * 100).toFixed(2)) : 0;
+
+    return {
+      formattedItems,
+      subTotal,
+      gstAmount,
+      grandTotal,
+      effectiveGstRate
+    };
   };
 
   const handleCreateInvoice = async (e: React.FormEvent) => {
@@ -436,18 +542,7 @@ export default function CashLedgerDashboard() {
 
     try {
       const invId = `inv_${Date.now()}`;
-      let subTotal = 0;
-      const formattedItems = itemsList.map(item => {
-        const q = parseInt(item.qty || '1');
-        const p = parseFloat(item.price || '0');
-        const tot = q * p;
-        subTotal += tot;
-        return { name: item.name, qty: q, price: p, total: tot };
-      });
-
-      const gstPercentage = parseFloat(gstRate);
-      const gstAmount = (subTotal * gstPercentage) / 100;
-      const grandTotal = subTotal + gstAmount;
+      const { formattedItems, subTotal, gstAmount, grandTotal, effectiveGstRate } = computeInvoiceBreakdown(itemsList);
 
       const invoiceData = {
         userId: user.uid,
@@ -456,7 +551,7 @@ export default function CashLedgerDashboard() {
         customerPhone: invCustomerPhone.trim(),
         items: formattedItems,
         subTotal,
-        gstRate: gstPercentage,
+        gstRate: effectiveGstRate,
         gstAmount,
         total: grandTotal,
         date: new Date().toISOString()
@@ -475,8 +570,7 @@ export default function CashLedgerDashboard() {
       setShowInvoiceModal(false);
       setInvCustomerName('');
       setInvCustomerPhone('');
-      setGstRate('0');
-      setItemsList([{ name: '', qty: '1', price: '' }]);
+      setItemsList([{ name: '', qty: '1', price: '', gstRate: 5, gstManual: false }]);
     } catch (err) {
       alert('Failed to create invoice.');
     }
@@ -538,23 +632,26 @@ export default function CashLedgerDashboard() {
     doc.setFillColor(15, 23, 42);
     doc.rect(14, 71, 182, 10, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setFont('times', 'bold');
     doc.text('ITEM DESCRIPTION', 18, 77);
-    doc.text('QTY', 105, 77);
-    doc.text('PRICE (RS.)', 135, 77);
-    doc.text('TOTAL (RS.)', 180, 77, { align: 'right' });
+    doc.text('QTY', 95, 77);
+    doc.text('PRICE', 118, 77);
+    doc.text('GST %', 143, 77);
+    doc.text('TOTAL (RS.)', 192, 77, { align: 'right' });
 
     let startY = 89;
-    const itemsArray = inv.items || [{ name: inv.itemName, qty: inv.quantity, price: inv.price, total: inv.total }];
+    const itemsArray = inv.items || [{ name: inv.itemName, qty: inv.quantity, price: inv.price, gstRate: inv.gstRate || 0, total: inv.total }];
 
     itemsArray.forEach((item: any) => {
+      const itemRate = item.gstRate ?? detectAutoGstRate(item.name || '');
       doc.setTextColor(51, 65, 85);
       doc.setFont('times', 'normal');
       doc.text(item.name || 'Item', 18, startY);
-      doc.text(item.qty.toString(), 105, startY);
-      doc.text(item.price.toLocaleString('en-IN', { minimumFractionDigits: 2 }), 135, startY);
-      doc.text(item.total.toLocaleString('en-IN', { minimumFractionDigits: 2 }), 185, startY, { align: 'right' });
+      doc.text(String(item.qty), 95, startY);
+      doc.text(Number(item.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }), 118, startY);
+      doc.text(`${itemRate}%`, 143, startY);
+      doc.text(Number(item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 }), 192, startY, { align: 'right' });
 
       doc.setDrawColor(240, 242, 245);
       doc.line(14, startY + 4, 196, startY + 4);
@@ -564,9 +661,8 @@ export default function CashLedgerDashboard() {
     doc.setDrawColor(226, 232, 240);
     doc.line(14, startY + 2, 196, startY + 2);
 
-    const subTot = inv.subTotal || inv.total;
-    const gstAmt = inv.gstAmount || 0;
-    const gRate = inv.gstRate || 0;
+    const subTot = inv.subTotal ?? inv.total;
+    const gstAmt = inv.gstAmount ?? 0;
     const grandTot = inv.total;
 
     const summaryStartY = startY + 8;
@@ -574,18 +670,13 @@ export default function CashLedgerDashboard() {
     doc.setTextColor(15, 23, 42);
     doc.setFontSize(9);
 
-    if (gRate > 0) {
-      doc.text(`Subtotal:`, 140, totalBoxY);
-      doc.text(`Rs. ${subTot.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, totalBoxY, { align: 'right' });
+    if (gstAmt > 0) {
+      doc.text('Subtotal:', 140, totalBoxY);
+      doc.text(`Rs. ${Number(subTot).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, totalBoxY, { align: 'right' });
       totalBoxY += 6;
 
-      const halfGst = gstAmt / 2;
-      doc.text(`CGST (${gRate / 2}%):`, 140, totalBoxY);
-      doc.text(`Rs. ${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, totalBoxY, { align: 'right' });
-      totalBoxY += 6;
-
-      doc.text(`SGST (${gRate / 2}%):`, 140, totalBoxY);
-      doc.text(`Rs. ${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, totalBoxY, { align: 'right' });
+      doc.text('Total GST (CGST+SGST):', 132, totalBoxY);
+      doc.text(`Rs. ${Number(gstAmt).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, totalBoxY, { align: 'right' });
       totalBoxY += 8;
     }
 
@@ -596,9 +687,8 @@ export default function CashLedgerDashboard() {
     doc.setFont('times', 'bold');
     doc.text('GRAND TOTAL:', 130, totalBoxY + 10);
     doc.setFontSize(11);
-    doc.text(`Rs. ${grandTot.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, totalBoxY + 10, { align: 'right' });
+    doc.text(`Rs. ${Number(grandTot).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, totalBoxY + 10, { align: 'right' });
 
-    // Dynamic UPI QR Code on A4 PDF
     if (qrDataUrl) {
       const qrY = summaryStartY;
       doc.setDrawColor(203, 213, 225);
@@ -613,13 +703,13 @@ export default function CashLedgerDashboard() {
       doc.setFontSize(6.5);
       doc.setTextColor(100, 116, 139);
       doc.text(upiId.substring(0, 22), 36, qrY + 45, { align: 'center' });
-      doc.text(`Amt: Rs. ${grandTot.toFixed(2)}`, 36, qrY + 49, { align: 'center' });
+      doc.text(`Amt: Rs. ${Number(grandTot).toFixed(2)}`, 36, qrY + 49, { align: 'center' });
     }
 
     doc.save(`${inv.invoiceNumber}_${inv.customerName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   };
 
-  // THERMAL 80MM POS RECEIPT PDF (FIXED COLUMN & GRAND TOTAL ALIGNMENT)
+  // THERMAL 80MM POS RECEIPT PDF (FIXED COLUMN & GRAND TOTAL ALIGNMENT + ITEM GST)
   const executeDownloadThermalReceipt = async (inv: any) => {
     const { default: jsPDF } = await import('jspdf');
     const qrDataUrl = await generateUpiQrDataUrl(inv.total, inv.invoiceNumber);
@@ -627,18 +717,17 @@ export default function CashLedgerDashboard() {
     const itemsArray = inv.items || [];
     const subTot = inv.subTotal ?? inv.total;
     const gstAmt = inv.gstAmount ?? 0;
-    const gRate = inv.gstRate ?? 0;
 
     const extraNameLines = itemsArray.reduce((sum: number, item: any) => {
       const len = (item.name || 'Item').length;
-      return sum + (len > 15 ? 1 : 0);
+      return sum + (len > 14 ? 1 : 0);
     }, 0);
 
     const estimatedHeight =
       125 +
-      itemsArray.length * 6 +
+      itemsArray.length * 6.5 +
       extraNameLines * 4 +
-      (gRate > 0 ? 22 : 0) +
+      (gstAmt > 0 ? 18 : 0) +
       (inv.customerPhone ? 5 : 0) +
       (qrDataUrl ? 40 : 0);
 
@@ -647,8 +736,8 @@ export default function CashLedgerDashboard() {
 
     const leftX = 4;
     const rightX = 76;
-    const qtyX = 43;
-    const priceX = 58;
+    const qtyX = 41;
+    const gstX = 54;
 
     let y = 8;
     doc.setFontSize(10.5);
@@ -686,12 +775,11 @@ export default function CashLedgerDashboard() {
     doc.text('----------------------------------------', 40, y, { align: 'center' });
     y += 3.8;
 
-    // Exact Column Headers
     doc.setFont('courier', 'bold');
     doc.setFontSize(7.5);
     doc.text('ITEM', leftX, y);
     doc.text('QTY', qtyX, y, { align: 'right' });
-    doc.text('PRICE', priceX, y, { align: 'right' });
+    doc.text('GST', gstX, y, { align: 'right' });
     doc.text('TOTAL', rightX, y, { align: 'right' });
     y += 2.5;
 
@@ -699,16 +787,16 @@ export default function CashLedgerDashboard() {
     doc.text('----------------------------------------', 40, y, { align: 'center' });
     y += 4.2;
 
-    // Items Rows with Exact Column Alignment
     itemsArray.forEach((item: any) => {
       const q = Number(item.qty || 1);
       const p = Number(item.price || 0);
-      const t = Number(item.total ?? q * p);
+      const itemRate = item.gstRate ?? detectAutoGstRate(item.name || '');
+      const t = Number(item.total ?? q * p * (1 + itemRate / 100));
 
-      const wrappedName = doc.splitTextToSize(item.name || 'Item', 33);
+      const wrappedName = doc.splitTextToSize(item.name || 'Item', 31);
       doc.text(wrappedName, leftX, y);
       doc.text(String(q), qtyX, y, { align: 'right' });
-      doc.text(p.toFixed(0), priceX, y, { align: 'right' });
+      doc.text(`${itemRate}%`, gstX, y, { align: 'right' });
       doc.text(t.toFixed(0), rightX, y, { align: 'right' });
 
       y += Math.max(wrappedName.length * 3.8, 5);
@@ -717,22 +805,16 @@ export default function CashLedgerDashboard() {
     doc.text('----------------------------------------', 40, y, { align: 'center' });
     y += 4.2;
 
-    // Properly Aligned Summary Breakdown
     doc.setFontSize(7.8);
     doc.setFont('courier', 'normal');
 
-    if (gRate > 0) {
+    if (gstAmt > 0) {
       doc.text('Subtotal', leftX, y);
-      doc.text(subTot.toFixed(2), rightX, y, { align: 'right' });
+      doc.text(Number(subTot).toFixed(2), rightX, y, { align: 'right' });
       y += 4;
 
-      const halfGst = gstAmt / 2;
-      doc.text(`CGST (${gRate / 2}%)`, leftX, y);
-      doc.text(halfGst.toFixed(2), rightX, y, { align: 'right' });
-      y += 4;
-
-      doc.text(`SGST (${gRate / 2}%)`, leftX, y);
-      doc.text(halfGst.toFixed(2), rightX, y, { align: 'right' });
+      doc.text('Total GST', leftX, y);
+      doc.text(Number(gstAmt).toFixed(2), rightX, y, { align: 'right' });
       y += 4.5;
     }
 
@@ -745,7 +827,6 @@ export default function CashLedgerDashboard() {
     doc.text(`Rs. ${Number(inv.total).toFixed(2)}`, rightX, y, { align: 'right' });
     y += 6;
 
-    // Dynamic UPI QR Code on 80mm Thermal Receipt
     if (qrDataUrl) {
       doc.setFont('courier', 'normal');
       doc.setFontSize(7.5);
@@ -1071,6 +1152,8 @@ export default function CashLedgerDashboard() {
     (p.phone && p.phone.includes(partySearchTerm))
   );
 
+  const liveBreakdown = computeInvoiceBreakdown(itemsList);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center text-slate-400 font-medium text-xs space-y-3">
@@ -1120,7 +1203,6 @@ export default function CashLedgerDashboard() {
     );
   }
 
-  // SECURITY PIN LOCK SCREEN OVERLAY
   if (isLocked) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 font-sans antialiased text-white">
@@ -1372,7 +1454,7 @@ export default function CashLedgerDashboard() {
               </button>
             ) : activeTab === 'inventory' ? (
               <button 
-                onClick={() => { setEditingItem(null); setInvItemName(''); setInvStockQty(''); setInvItemPrice(''); setShowInventoryModal(true); }}
+                onClick={() => { setEditingItem(null); setInvItemName(''); setInvStockQty(''); setInvItemPrice(''); setInvItemGst('5'); setInvGstManual(false); setShowInventoryModal(true); }}
                 className="w-full sm:w-auto bg-sky-600 hover:bg-sky-700 text-white px-5 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer transition-all"
               >
                 <Plus size={15} /> Add Stock Item
@@ -1399,7 +1481,6 @@ export default function CashLedgerDashboard() {
         <main className="p-4 md:p-8 flex-1 overflow-y-auto">
           {activeTab === 'daybook' && (
             <>
-              {/* Summary Cards v2.0 */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-6">
                 <div className={`p-5 md:p-6 rounded-3xl border shadow-sm flex items-center justify-between transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
                   <div>
@@ -1447,7 +1528,6 @@ export default function CashLedgerDashboard() {
                 </div>
               )}
 
-              {/* ANALYTICS CHART SECTION v2.0 */}
               <div className={`p-6 rounded-3xl border shadow-sm mb-8 transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
@@ -1469,7 +1549,6 @@ export default function CashLedgerDashboard() {
                 </div>
               </div>
 
-              {/* DATE FILTER & SEARCH BAR v2.0 */}
               <div className={`rounded-3xl border shadow-sm overflow-hidden mb-6 transition-colors ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200/80'}`}>
                 <div className={`p-4 md:p-5 border-b flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors ${darkMode ? 'bg-slate-900/70 border-slate-800' : 'bg-slate-50/70 border-slate-200/80'}`}>
                   <div className="flex items-center gap-3">
@@ -1614,7 +1693,6 @@ export default function CashLedgerDashboard() {
                 </div>
               ) : (
                 <div className="flex flex-col md:flex-row gap-6">
-                  {/* Left Column */}
                   <div className="w-full md:w-80 shrink-0 space-y-3 border-b md:border-b-0 md:border-r border-slate-800 pb-4 md:pb-0 md:pr-4">
                     <div className="relative">
                       <Search size={14} className="absolute left-3.5 top-3 text-slate-400" />
@@ -1666,7 +1744,6 @@ export default function CashLedgerDashboard() {
                     </div>
                   </div>
 
-                  {/* Right Column */}
                   <div className="flex-1 min-w-0">
                     {selectedParty ? (
                       <div className="space-y-4">
@@ -1795,7 +1872,7 @@ export default function CashLedgerDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-4">
                 <div>
                   <h3 className="text-base md:text-lg font-bold">Tax Invoices</h3>
-                  <p className="text-xs text-slate-400 font-semibold">Generate and download standard A4 or thermal POS receipts with UPI QR</p>
+                  <p className="text-xs text-slate-400 font-semibold">Generate and download standard A4 or thermal POS receipts with live GST & UPI QR</p>
                 </div>
               </div>
 
@@ -1838,7 +1915,7 @@ export default function CashLedgerDashboard() {
                             <td className="p-3.5 text-slate-400">
                               {inv.items ? `${inv.items.length} item(s)` : `${inv.itemName} (Qty: ${inv.quantity})`}
                             </td>
-                            <td className="p-3.5 text-right font-black text-emerald-500">Rs. {inv.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className="p-3.5 text-right font-black text-emerald-500">Rs. {Number(inv.total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                             <td className="p-3.5 text-center flex items-center justify-center gap-2">
                               <button 
                                 onClick={() => handleProAction(() => executeDownloadInvoicePDF(inv))}
@@ -1870,10 +1947,10 @@ export default function CashLedgerDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-4">
                 <div>
                   <h3 className="text-base md:text-lg font-bold">Inventory & Stock</h3>
-                  <p className="text-xs text-slate-400 font-semibold">Manage store items and monitor stock levels</p>
+                  <p className="text-xs text-slate-400 font-semibold">Manage store items, auto GST slabs, and stock levels</p>
                 </div>
                 <button 
-                  onClick={() => { setEditingItem(null); setInvItemName(''); setInvStockQty(''); setInvItemPrice(''); setShowInventoryModal(true); }}
+                  onClick={() => { setEditingItem(null); setInvItemName(''); setInvStockQty(''); setInvItemPrice(''); setInvItemGst('5'); setInvGstManual(false); setShowInventoryModal(true); }}
                   className="bg-sky-600 hover:bg-sky-700 text-white px-4.5 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-wider shadow-md cursor-pointer flex items-center justify-center gap-2"
                 >
                   <Plus size={15} /> Add Stock Item
@@ -1885,7 +1962,7 @@ export default function CashLedgerDashboard() {
                   <Package size={40} className="mx-auto text-slate-600 mb-3" />
                   <p className="font-bold text-slate-400 text-sm">No Stock Items Added Yet</p>
                   <button 
-                    onClick={() => { setEditingItem(null); setInvItemName(''); setInvStockQty(''); setInvItemPrice(''); setShowInventoryModal(true); }}
+                    onClick={() => { setEditingItem(null); setInvItemName(''); setInvStockQty(''); setInvItemPrice(''); setInvItemGst('5'); setInvGstManual(false); setShowInventoryModal(true); }}
                     className="mt-3 bg-sky-600 text-white px-4 py-2 rounded-2xl font-bold text-xs uppercase shadow-md cursor-pointer"
                   >
                     + Add Item
@@ -1899,56 +1976,67 @@ export default function CashLedgerDashboard() {
                         <tr className={`text-[10px] uppercase font-black border-b transition-colors ${darkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
                           <th className="p-3.5">Item Name</th>
                           <th className="p-3.5">Available Stock</th>
+                          <th className="p-3.5 text-center">GST Slab</th>
                           <th className="p-3.5 text-right">Selling Price (Rs.)</th>
                           <th className="p-3.5 text-center">Status</th>
                           <th className="p-3.5 text-center">Action</th>
                         </tr>
                       </thead>
                       <tbody className={`divide-y text-xs font-medium transition-colors ${darkMode ? 'divide-slate-800 text-slate-200' : 'divide-slate-100'}`}>
-                        {inventory.map((item) => (
-                          <tr key={item.id} className={`transition-colors ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
-                            <td className={`p-3.5 font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{item.name}</td>
-                            <td className="p-3.5 font-mono font-bold text-slate-400">{item.stock} units</td>
-                            <td className={`p-3.5 text-right font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Rs. {item.price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                            <td className="p-3.5 text-center">
-                              {item.stock <= 5 ? (
-                                <span className="bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase inline-flex items-center gap-1">
-                                  <AlertTriangle size={10} /> Low Stock
+                        {inventory.map((item) => {
+                          const itemGst = item.gstRate ?? detectAutoGstRate(item.name || '');
+                          return (
+                            <tr key={item.id} className={`transition-colors ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
+                              <td className={`p-3.5 font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{item.name}</td>
+                              <td className="p-3.5 font-mono font-bold text-slate-400">{item.stock} units</td>
+                              <td className="p-3.5 text-center">
+                                <span className="bg-sky-500/15 text-sky-400 border border-sky-500/25 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase">
+                                  {itemGst}% GST
                                 </span>
-                              ) : (
-                                <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase">
-                                  In Stock
-                                </span>
-                              )}
-                            </td>
-                            <td className="p-3.5 text-center flex items-center justify-center gap-2">
-                              <button 
-                                onClick={() => {
-                                  setEditingItem(item);
-                                  setInvItemName(item.name);
-                                  setInvStockQty(item.stock.toString());
-                                  setInvItemPrice(item.price.toString());
-                                  setShowInventoryModal(true);
-                                }}
-                                title="Edit Stock"
-                                className="text-sky-400 hover:text-sky-300 p-1.5 rounded-lg cursor-pointer"
-                              >
-                                <Edit3 size={15} />
-                              </button>
-                              <button 
-                                onClick={async () => {
-                                  if (window.confirm(`Delete ${item.name} from inventory?`)) {
-                                    await deleteDoc(doc(db, 'inventory', item.id));
-                                  }
-                                }}
-                                title="Delete Item"
-                                className="text-rose-400 hover:text-rose-300 p-1.5 rounded-lg cursor-pointer"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+                              <td className={`p-3.5 text-right font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Rs. {Number(item.price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                              <td className="p-3.5 text-center">
+                                {item.stock <= 5 ? (
+                                  <span className="bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase inline-flex items-center gap-1">
+                                    <AlertTriangle size={10} /> Low Stock
+                                  </span>
+                                ) : (
+                                  <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase">
+                                    In Stock
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3.5 text-center flex items-center justify-center gap-2">
+                                <button 
+                                  onClick={() => {
+                                    setEditingItem(item);
+                                    setInvItemName(item.name);
+                                    setInvStockQty(item.stock.toString());
+                                    setInvItemPrice(item.price.toString());
+                                    setInvItemGst(String(itemGst));
+                                    setInvGstManual(true);
+                                    setShowInventoryModal(true);
+                                  }}
+                                  title="Edit Stock"
+                                  className="text-sky-400 hover:text-sky-300 p-1.5 rounded-lg cursor-pointer"
+                                >
+                                  <Edit3 size={15} />
+                                </button>
+                                <button 
+                                  onClick={async () => {
+                                    if (window.confirm(`Delete ${item.name} from inventory?`)) {
+                                      await deleteDoc(doc(db, 'inventory', item.id));
+                                    }
+                                  }}
+                                  title="Delete Item"
+                                  className="text-rose-400 hover:text-rose-300 p-1.5 rounded-lg cursor-pointer"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -2063,7 +2151,6 @@ export default function CashLedgerDashboard() {
                 </form>
               </div>
 
-              {/* SECURITY PIN SETUP SECTION v2.0 */}
               <div className={`rounded-3xl border p-6 md:p-8 shadow-sm transition-colors ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/80 text-slate-900'}`}>
                 <div className="flex items-center gap-2 mb-2 text-sky-400">
                   <ShieldCheck size={18} />
@@ -2113,7 +2200,6 @@ export default function CashLedgerDashboard() {
                 </form>
               </div>
 
-              {/* RESET / DANGER ZONE */}
               <div className="bg-rose-500/10 border border-rose-500/30 rounded-3xl p-6 md:p-8 shadow-sm">
                 <div className="flex items-center gap-2 mb-2 text-rose-400">
                   <RotateCcw size={18} />
@@ -2332,7 +2418,7 @@ export default function CashLedgerDashboard() {
         </div>
       )}
 
-      {/* Add / Edit Inventory Item Modal */}
+      {/* Add / Edit Inventory Item Modal with Auto GST */}
       {showInventoryModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-6 text-white">
@@ -2341,31 +2427,31 @@ export default function CashLedgerDashboard() {
             </h3>
             <form onSubmit={handleSaveInventoryItem} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Item Name</label>
+                <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Item Name (Auto-sets GST)</label>
                 <input 
                   type="text" 
                   required 
                   value={invItemName} 
-                  onChange={(e) => setInvItemName(e.target.value)}
-                  placeholder="e.g. KitKat Chocolate"
+                  onChange={(e) => handleInventoryNameChange(e.target.value)}
+                  placeholder="e.g. KitKat, Branded Atta, Surf"
                   className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Stock Quantity</label>
+                  <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Stock Qty</label>
                   <input 
                     type="number" 
                     min="0"
                     required 
                     value={invStockQty} 
                     onChange={(e) => setInvStockQty(e.target.value)}
-                    placeholder="e.g. 20"
-                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
+                    placeholder="20"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-3.5 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Selling Price (Rs.)</label>
+                  <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Price (Rs.)</label>
                   <input 
                     type="number" 
                     step="0.01"
@@ -2373,8 +2459,24 @@ export default function CashLedgerDashboard() {
                     value={invItemPrice} 
                     onChange={(e) => setInvItemPrice(e.target.value)}
                     placeholder="0.00"
-                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-3.5 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                   />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Auto GST %</label>
+                  <select
+                    value={invItemGst}
+                    onChange={(e) => {
+                      setInvItemGst(e.target.value);
+                      setInvGstManual(true);
+                    }}
+                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-2.5 py-3 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
+                  >
+                    <option value="0">0% GST</option>
+                    <option value="5">5% GST</option>
+                    <option value="18">18% GST</option>
+                    <option value="40">40% GST</option>
+                  </select>
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
@@ -2397,15 +2499,15 @@ export default function CashLedgerDashboard() {
         </div>
       )}
 
-      {/* Create Multi-Item Invoice Modal with Customer Mobile & GST */}
+      {/* Create Multi-Item Invoice Modal with Item-wise Automatic GST */}
       {showInvoiceModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto text-white">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-xl w-full p-6 max-h-[90vh] overflow-y-auto text-white">
             <h3 className="text-base font-extrabold uppercase mb-4 flex items-center gap-2">
-              <Receipt size={18} className="text-sky-400" /> Create Tax Invoice with GST & UPI QR
+              <Receipt size={18} className="text-sky-400" /> Create Tax Invoice (Auto Item-wise GST)
             </h3>
             <form onSubmit={handleCreateInvoice} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Customer Name</label>
                   <input 
@@ -2428,19 +2530,6 @@ export default function CashLedgerDashboard() {
                     className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-3.5 py-3 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">GST Rate (%)</label>
-                  <select 
-                    value={gstRate} 
-                    onChange={(e) => setGstRate(e.target.value)}
-                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-3 py-3 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
-                  >
-                    <option value="0">0% GST</option>
-                    <option value="5">5% GST</option>
-                    <option value="12">12% GST</option>
-                    <option value="18">18% GST</option>
-                  </select>
-                </div>
               </div>
 
               <div className="space-y-3 pt-2">
@@ -2455,15 +2544,22 @@ export default function CashLedgerDashboard() {
                   </button>
                 </div>
 
+                <datalist id="inventory-items-list">
+                  {inventory.map((invItem) => (
+                    <option key={invItem.id} value={invItem.name} />
+                  ))}
+                </datalist>
+
                 {itemsList.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2 bg-slate-800/60 p-3.5 rounded-2xl border border-slate-700">
+                  <div key={index} className="flex flex-wrap sm:flex-nowrap items-center gap-2 bg-slate-800/60 p-3 rounded-2xl border border-slate-700">
                     <input 
                       type="text" 
+                      list="inventory-items-list"
                       required
-                      placeholder="Item name" 
+                      placeholder="Item name (e.g. KitKat, Atta)" 
                       value={item.name}
                       onChange={(e) => handleItemChange(index, 'name', e.target.value)}
-                      className="flex-1 border border-slate-700 bg-slate-800 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-white placeholder-slate-500"
+                      className="flex-1 min-w-[130px] border border-slate-700 bg-slate-800 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-white placeholder-slate-500"
                     />
                     <input 
                       type="number" 
@@ -2472,7 +2568,7 @@ export default function CashLedgerDashboard() {
                       placeholder="Qty" 
                       value={item.qty}
                       onChange={(e) => handleItemChange(index, 'qty', e.target.value)}
-                      className="w-16 border border-slate-700 bg-slate-800 rounded-xl px-2.5 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-white placeholder-slate-500"
+                      className="w-16 border border-slate-700 bg-slate-800 rounded-xl px-2 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-white placeholder-slate-500"
                     />
                     <input 
                       type="number" 
@@ -2481,8 +2577,19 @@ export default function CashLedgerDashboard() {
                       placeholder="Price" 
                       value={item.price}
                       onChange={(e) => handleItemChange(index, 'price', e.target.value)}
-                      className="w-24 border border-slate-700 bg-slate-800 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-white placeholder-slate-500"
+                      className="w-20 border border-slate-700 bg-slate-800 rounded-xl px-2.5 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-sky-500 text-white placeholder-slate-500"
                     />
+                    <select
+                      value={item.gstRate ?? 5}
+                      onChange={(e) => handleItemChange(index, 'gstRate', e.target.value)}
+                      title="Auto-detected GST rate (adjustable)"
+                      className="w-20 border border-slate-700 bg-slate-800 rounded-xl px-2 py-2 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-sky-500 text-sky-300"
+                    >
+                      <option value={0}>0%</option>
+                      <option value={5}>5%</option>
+                      <option value={18}>18%</option>
+                      <option value={40}>40%</option>
+                    </select>
                     {itemsList.length > 1 && (
                       <button 
                         type="button" 
@@ -2494,6 +2601,21 @@ export default function CashLedgerDashboard() {
                     )}
                   </div>
                 ))}
+              </div>
+
+              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-1.5 text-xs">
+                <div className="flex justify-between text-slate-400">
+                  <span>Subtotal:</span>
+                  <span>Rs. {liveBreakdown.subTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sky-400">
+                  <span>Auto GST Amount:</span>
+                  <span>Rs. {liveBreakdown.gstAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-black text-emerald-400 pt-1.5 border-t border-slate-800">
+                  <span>Grand Total:</span>
+                  <span>Rs. {liveBreakdown.grandTotal.toFixed(2)}</span>
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
