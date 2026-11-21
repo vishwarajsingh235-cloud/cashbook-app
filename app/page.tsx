@@ -11,31 +11,25 @@ import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query, where
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import QRCode from 'qrcode';
 
-// Current Indian GST slabs (0%, 5%, 18%, 40%) auto-detection for common retail & grocery items
 const detectAutoGstRate = (itemName: string): number => {
   const name = (itemName || '').toLowerCase().trim();
   if (!name) return 5;
 
-  // 40% slab: aerated / sweetened carbonated & energy drinks
   if (/(cold drink|aerated|cola|pepsi|sprite|fanta|thums up|mirinda|soda|energy drink|red bull)/.test(name)) {
     return 40;
   }
 
-  // 18% slab: detergents, dish/laundry soaps, cleaners, vinegar
   if (/(detergent|surf|tide|rin|wheel|ariel|washing powder|dishwash|vim|cleaner|harpic|lizol|vinegar)/.test(name)) {
     return 18;
   }
 
-  // 0% slab: fresh/basic unbranded/exempt staples (milk, paneer, bread, salt, curd, fresh veg/fruits)
   if (/(milk|doodh|paneer|curd|dahi|lassi|chaach|bread|roti|paratha|salt|namak|egg|anda|vegetable|sabzi|fruit)/.test(name)) {
-    // Pre-packaged branded atta/rice/dal often attract 5% when packaged & labelled
     if (/(packaged|packet|brand|branded|ashirvaad|aashirvaad|fortune|india gate|daawat)/.test(name)) {
       return 5;
     }
     return 0;
   }
 
-  // 5% slab: chocolates (KitKat, Dairy Milk), biscuits, namkeen, edible oil, sugar, tea, coffee, packaged atta/rice/dal
   if (/(kitkat|kit kat|dairy milk|cadbury|chocolate|biscuit|cookie|namkeen|bhujia|chips|atta|aata|flour|rice|chawal|dal|sugar|chini|oil|tel|ghee|tea|chai|coffee|spice|masala)/.test(name)) {
     return 5;
   }
@@ -93,9 +87,10 @@ export default function CashLedgerDashboard() {
   const [invItemGst, setInvItemGst] = useState('5');
   const [invGstManual, setInvGstManual] = useState(false);
 
-  // Multi-Item Invoice Form States (with Auto Item-wise GST)
+  // Multi-Item Invoice Form States (with Auto-Sync Payment Status)
   const [invCustomerName, setInvCustomerName] = useState('');
   const [invCustomerPhone, setInvCustomerPhone] = useState('');
+  const [invPaymentStatus, setInvPaymentStatus] = useState<'PAID_CASH' | 'PAID_UPI' | 'UNPAID_UDHAAR'>('PAID_CASH');
   const [itemsList, setItemsList] = useState<any[]>([
     { name: '', qty: '1', price: '', gstRate: 5, gstManual: false }
   ]);
@@ -108,7 +103,6 @@ export default function CashLedgerDashboard() {
   const [upiId, setUpiId] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // 1. Auth Listener & Profile / PIN Fetch
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
@@ -131,7 +125,6 @@ export default function CashLedgerDashboard() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Fetch User Data & Security PIN
   useEffect(() => {
     if (!user) {
       setTransactions([]);
@@ -495,7 +488,14 @@ export default function CashLedgerDashboard() {
     setItemsList(list);
   };
 
-  // Live Invoice Totals with Item-wise Automatic GST
+  const handleCustomerNameChange = (val: string) => {
+    setInvCustomerName(val);
+    const matchedParty = parties.find(p => p.name.toLowerCase() === val.toLowerCase().trim());
+    if (matchedParty && matchedParty.phone && !invCustomerPhone) {
+      setInvCustomerPhone(matchedParty.phone);
+    }
+  };
+
   const computeInvoiceBreakdown = (rawItems: any[]) => {
     let subTotal = 0;
     let gstAmount = 0;
@@ -536,29 +536,36 @@ export default function CashLedgerDashboard() {
     };
   };
 
+  // Create Invoice + Auto-Sync with Cashbook & Party Udhaar Ledger
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !invCustomerName || itemsList.length === 0) return;
+    if (!user || !invCustomerName.trim() || itemsList.length === 0) return;
 
     try {
+      const cleanCustomerName = invCustomerName.trim();
+      const cleanCustomerPhone = invCustomerPhone.trim();
+      const invNumber = `INV-${Math.floor(1000 + Math.random() * 9000)}`;
       const invId = `inv_${Date.now()}`;
+      const nowIso = new Date().toISOString();
       const { formattedItems, subTotal, gstAmount, grandTotal, effectiveGstRate } = computeInvoiceBreakdown(itemsList);
 
       const invoiceData = {
         userId: user.uid,
-        invoiceNumber: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
-        customerName: invCustomerName,
-        customerPhone: invCustomerPhone.trim(),
+        invoiceNumber: invNumber,
+        customerName: cleanCustomerName,
+        customerPhone: cleanCustomerPhone,
+        paymentStatus: invPaymentStatus,
         items: formattedItems,
         subTotal,
         gstRate: effectiveGstRate,
         gstAmount,
         total: grandTotal,
-        date: new Date().toISOString()
+        date: nowIso
       };
 
       await setDoc(doc(db, 'invoices', invId), invoiceData);
 
+      // 1. Deduct stock from Inventory
       for (const soldItem of formattedItems) {
         const matchedInvItem = inventory.find(i => i.name.toLowerCase() === soldItem.name.toLowerCase());
         if (matchedInvItem) {
@@ -567,9 +574,50 @@ export default function CashLedgerDashboard() {
         }
       }
 
+      // 2. Auto-sync with Cashbook or Party Udhaar Ledger
+      let matchedParty = parties.find(p => p.name.toLowerCase() === cleanCustomerName.toLowerCase());
+
+      if (invPaymentStatus === 'UNPAID_UDHAAR') {
+        if (!matchedParty) {
+          const newPartyId = `party_${Date.now()}`;
+          await setDoc(doc(db, 'parties', newPartyId), {
+            userId: user.uid,
+            name: cleanCustomerName,
+            phone: cleanCustomerPhone
+          });
+          matchedParty = { id: newPartyId, name: cleanCustomerName, phone: cleanCustomerPhone };
+        }
+
+        const udhaarTxnId = `txn_udhaar_${Date.now()}`;
+        await setDoc(doc(db, 'transactions', udhaarTxnId), {
+          userId: user.uid,
+          party_id: matchedParty.id,
+          txn_type: 'CASH_OUT',
+          amount: Number(grandTotal.toFixed(2)),
+          payment_mode: 'Credit (Udhaar)',
+          category: 'Sales',
+          remarks: `Invoice ${invNumber} (Unpaid Udhaar)`,
+          txn_date: nowIso
+        });
+      } else {
+        const paidTxnId = `txn_inv_${Date.now()}`;
+        const modeLabel = invPaymentStatus === 'PAID_UPI' ? 'UPI' : 'Cash';
+        await setDoc(doc(db, 'transactions', paidTxnId), {
+          userId: user.uid,
+          party_id: matchedParty ? matchedParty.id : null,
+          txn_type: 'CASH_IN',
+          amount: Number(grandTotal.toFixed(2)),
+          payment_mode: modeLabel,
+          category: 'Sales',
+          remarks: `Invoice ${invNumber} - ${cleanCustomerName}`,
+          txn_date: nowIso
+        });
+      }
+
       setShowInvoiceModal(false);
       setInvCustomerName('');
       setInvCustomerPhone('');
+      setInvPaymentStatus('PAID_CASH');
       setItemsList([{ name: '', qty: '1', price: '', gstRate: 5, gstManual: false }]);
     } catch (err) {
       alert('Failed to create invoice.');
@@ -609,8 +657,14 @@ export default function CashLedgerDashboard() {
     doc.setTextColor(100, 116, 139);
     doc.setFontSize(9);
     doc.setFont('times', 'normal');
+    const statusLabel = inv.paymentStatus === 'UNPAID_UDHAAR'
+      ? 'UNPAID (UDHAAR)'
+      : inv.paymentStatus === 'PAID_UPI'
+      ? 'PAID (UPI)'
+      : 'PAID (CASH)';
     doc.text(`Invoice No: ${inv.invoiceNumber}`, 196, 26, { align: 'right' });
     doc.text(`Date: ${new Date(inv.date).toLocaleDateString('en-IN')}`, 196, 31, { align: 'right' });
+    doc.text(`Status: ${statusLabel}`, 196, 36, { align: 'right' });
 
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.5);
@@ -709,7 +763,6 @@ export default function CashLedgerDashboard() {
     doc.save(`${inv.invoiceNumber}_${inv.customerName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   };
 
-  // THERMAL 80MM POS RECEIPT PDF (FIXED COLUMN & GRAND TOTAL ALIGNMENT + ITEM GST)
   const executeDownloadThermalReceipt = async (inv: any) => {
     const { default: jsPDF } = await import('jspdf');
     const qrDataUrl = await generateUpiQrDataUrl(inv.total, inv.invoiceNumber);
@@ -724,7 +777,7 @@ export default function CashLedgerDashboard() {
     }, 0);
 
     const estimatedHeight =
-      125 +
+      130 +
       itemsArray.length * 6.5 +
       extraNameLines * 4 +
       (gstAmt > 0 ? 18 : 0) +
@@ -771,6 +824,14 @@ export default function CashLedgerDashboard() {
       doc.text(`Mobile: +91 ${inv.customerPhone}`, leftX, y);
       y += 3.8;
     }
+
+    const statusText = inv.paymentStatus === 'UNPAID_UDHAAR'
+      ? 'UNPAID (UDHAAR)'
+      : inv.paymentStatus === 'PAID_UPI'
+      ? 'PAID (UPI)'
+      : 'PAID (CASH)';
+    doc.text(`Payment: ${statusText}`, leftX, y);
+    y += 3.8;
 
     doc.text('----------------------------------------', 40, y, { align: 'center' });
     y += 3.8;
@@ -1872,7 +1933,7 @@ export default function CashLedgerDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-4">
                 <div>
                   <h3 className="text-base md:text-lg font-bold">Tax Invoices</h3>
-                  <p className="text-xs text-slate-400 font-semibold">Generate and download standard A4 or thermal POS receipts with live GST & UPI QR</p>
+                  <p className="text-xs text-slate-400 font-semibold">Auto-syncs Paid bills to Cashbook & Unpaid bills to Party Udhaar</p>
                 </div>
               </div>
 
@@ -1890,50 +1951,61 @@ export default function CashLedgerDashboard() {
               ) : (
                 <div className={`border rounded-2xl overflow-hidden shadow-sm transition-colors ${darkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[600px]">
+                    <table className="w-full text-left border-collapse min-w-[650px]">
                       <thead>
                         <tr className={`text-[10px] uppercase font-black border-b transition-colors ${darkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
                           <th className="p-3.5">Invoice No</th>
                           <th className="p-3.5">Date</th>
                           <th className="p-3.5">Customer Name</th>
-                          <th className="p-3.5">Items Summary</th>
+                          <th className="p-3.5">Status</th>
                           <th className="p-3.5 text-right">Total Amount</th>
                           <th className="p-3.5 text-center">Actions</th>
                         </tr>
                       </thead>
                       <tbody className={`divide-y text-xs font-medium transition-colors ${darkMode ? 'divide-slate-800 text-slate-200' : 'divide-slate-100'}`}>
-                        {invoices.map((inv) => (
-                          <tr key={inv.id} className={`transition-colors ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
-                            <td className={`p-3.5 font-mono font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{inv.invoiceNumber}</td>
-                            <td className="p-3.5 text-slate-400 font-mono">{new Date(inv.date).toLocaleDateString('en-IN')}</td>
-                            <td className={`p-3.5 font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>
-                              <div>{inv.customerName}</div>
-                              {inv.customerPhone && (
-                                <div className="text-[10px] text-slate-400 font-mono">+91 {inv.customerPhone}</div>
-                              )}
-                            </td>
-                            <td className="p-3.5 text-slate-400">
-                              {inv.items ? `${inv.items.length} item(s)` : `${inv.itemName} (Qty: ${inv.quantity})`}
-                            </td>
-                            <td className="p-3.5 text-right font-black text-emerald-500">Rs. {Number(inv.total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                            <td className="p-3.5 text-center flex items-center justify-center gap-2">
-                              <button 
-                                onClick={() => handleProAction(() => executeDownloadInvoicePDF(inv))}
-                                title="Download A4 PDF"
-                                className="bg-slate-800 hover:bg-sky-600 text-slate-200 hover:text-white px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase inline-flex items-center gap-1 transition-all cursor-pointer border border-slate-700 shadow-sm"
-                              >
-                                <Download size={11} /> A4
-                              </button>
-                              <button 
-                                onClick={() => handleProAction(() => executeDownloadThermalReceipt(inv))}
-                                title="Download 80mm Thermal Receipt"
-                                className="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase inline-flex items-center gap-1 transition-all cursor-pointer shadow-sm"
-                              >
-                                <Printer size={11} /> Thermal
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                        {invoices.map((inv) => {
+                          const isUdhaar = inv.paymentStatus === 'UNPAID_UDHAAR';
+                          return (
+                            <tr key={inv.id} className={`transition-colors ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
+                              <td className={`p-3.5 font-mono font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{inv.invoiceNumber}</td>
+                              <td className="p-3.5 text-slate-400 font-mono">{new Date(inv.date).toLocaleDateString('en-IN')}</td>
+                              <td className={`p-3.5 font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>
+                                <div>{inv.customerName}</div>
+                                {inv.customerPhone && (
+                                  <div className="text-[10px] text-slate-400 font-mono">+91 {inv.customerPhone}</div>
+                                )}
+                              </td>
+                              <td className="p-3.5">
+                                {isUdhaar ? (
+                                  <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase">
+                                    Udhaar
+                                  </span>
+                                ) : (
+                                  <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase">
+                                    {inv.paymentStatus === 'PAID_UPI' ? 'Paid (UPI)' : 'Paid (Cash)'}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3.5 text-right font-black text-emerald-500">Rs. {Number(inv.total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                              <td className="p-3.5 text-center flex items-center justify-center gap-2">
+                                <button 
+                                  onClick={() => handleProAction(() => executeDownloadInvoicePDF(inv))}
+                                  title="Download A4 PDF"
+                                  className="bg-slate-800 hover:bg-sky-600 text-slate-200 hover:text-white px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase inline-flex items-center gap-1 transition-all cursor-pointer border border-slate-700 shadow-sm"
+                                >
+                                  <Download size={11} /> A4
+                                </button>
+                                <button 
+                                  onClick={() => handleProAction(() => executeDownloadThermalReceipt(inv))}
+                                  title="Download 80mm Thermal Receipt"
+                                  className="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase inline-flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                                >
+                                  <Printer size={11} /> Thermal
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -2499,25 +2571,31 @@ export default function CashLedgerDashboard() {
         </div>
       )}
 
-      {/* Create Multi-Item Invoice Modal with Item-wise Automatic GST */}
+      {/* Create Multi-Item Invoice Modal with Auto-Sync Cashbook & Udhaar */}
       {showInvoiceModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-xl w-full p-6 max-h-[90vh] overflow-y-auto text-white">
             <h3 className="text-base font-extrabold uppercase mb-4 flex items-center gap-2">
-              <Receipt size={18} className="text-sky-400" /> Create Tax Invoice (Auto Item-wise GST)
+              <Receipt size={18} className="text-sky-400" /> Create Tax Invoice & Auto-Sync Ledger
             </h3>
             <form onSubmit={handleCreateInvoice} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Customer Name</label>
                   <input 
                     type="text" 
+                    list="parties-suggestions-list"
                     required 
                     value={invCustomerName} 
-                    onChange={(e) => setInvCustomerName(e.target.value)}
+                    onChange={(e) => handleCustomerNameChange(e.target.value)}
                     placeholder="Enter name"
                     className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-3.5 py-3 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                   />
+                  <datalist id="parties-suggestions-list">
+                    {parties.map((partyItem) => (
+                      <option key={partyItem.id} value={partyItem.name} />
+                    ))}
+                  </datalist>
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Mobile Number</label>
@@ -2529,6 +2607,18 @@ export default function CashLedgerDashboard() {
                     placeholder="Optional"
                     className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-3.5 py-3 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                   />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Payment / Sync</label>
+                  <select
+                    value={invPaymentStatus}
+                    onChange={(e) => setInvPaymentStatus(e.target.value as any)}
+                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-3 py-3 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-emerald-300"
+                  >
+                    <option value="PAID_CASH">Paid (Cash) → Cashbook</option>
+                    <option value="PAID_UPI">Paid (UPI) → Cashbook</option>
+                    <option value="UNPAID_UDHAAR">Unpaid (Udhaar) → Party</option>
+                  </select>
                 </div>
               </div>
 
@@ -2630,7 +2720,7 @@ export default function CashLedgerDashboard() {
                   type="submit" 
                   className="px-5 py-2.5 text-white bg-sky-600 hover:bg-sky-700 rounded-2xl font-bold text-xs uppercase shadow-md cursor-pointer"
                 >
-                  Save & Generate PDF
+                  Save & Sync Ledger
                 </button>
               </div>
             </form>
