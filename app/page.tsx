@@ -619,83 +619,136 @@ export default function CashLedgerDashboard() {
     doc.save(`${inv.invoiceNumber}_${inv.customerName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   };
 
+  // THERMAL 80MM POS RECEIPT PDF (FIXED COLUMN & GRAND TOTAL ALIGNMENT)
   const executeDownloadThermalReceipt = async (inv: any) => {
     const { default: jsPDF } = await import('jspdf');
     const qrDataUrl = await generateUpiQrDataUrl(inv.total, inv.invoiceNumber);
 
-    const itemsCount = (inv.items || []).length;
-    const estimatedHeight = 125 + (itemsCount * 12) + ((inv.gstRate || 0) > 0 ? 25 : 0) + (inv.customerPhone ? 5 : 0) + (qrDataUrl ? 38 : 0);
+    const itemsArray = inv.items || [];
+    const subTot = inv.subTotal ?? inv.total;
+    const gstAmt = inv.gstAmount ?? 0;
+    const gRate = inv.gstRate ?? 0;
+
+    const extraNameLines = itemsArray.reduce((sum: number, item: any) => {
+      const len = (item.name || 'Item').length;
+      return sum + (len > 15 ? 1 : 0);
+    }, 0);
+
+    const estimatedHeight =
+      125 +
+      itemsArray.length * 6 +
+      extraNameLines * 4 +
+      (gRate > 0 ? 22 : 0) +
+      (inv.customerPhone ? 5 : 0) +
+      (qrDataUrl ? 40 : 0);
 
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, estimatedHeight] });
     doc.setFont('courier', 'normal');
 
+    const leftX = 4;
+    const rightX = 76;
+    const qtyX = 43;
+    const priceX = 58;
+
     let y = 8;
-    doc.setFontSize(10);
+    doc.setFontSize(10.5);
     doc.setFont('courier', 'bold');
     doc.text(businessName.toUpperCase(), 40, y, { align: 'center' });
 
     y += 4;
     doc.setFontSize(7.5);
     doc.setFont('courier', 'normal');
-    if (address) { doc.text(address, 40, y, { align: 'center' }); y += 3.5; }
-    if (phone) { doc.text(`Phone: +91 ${phone}`, 40, y, { align: 'center' }); y += 5; }
-
-    doc.text('----------------------------------------', 40, y, { align: 'center' });
-    y += 3.5;
-
-    doc.text(`Bill No: ${inv.invoiceNumber}`, 4, y);
-    y += 3.5;
-    doc.text(`Date: ${new Date(inv.date).toLocaleDateString('en-IN')}`, 4, y);
-    y += 3.5;
-    doc.text(`Customer: ${inv.customerName}`, 4, y);
-    y += 3.5;
-    if (inv.customerPhone) {
-      doc.text(`Mobile: +91 ${inv.customerPhone}`, 4, y);
-      y += 3.5;
+    if (address) {
+      const addrLines = doc.splitTextToSize(address, 72);
+      doc.text(addrLines, 40, y, { align: 'center' });
+      y += addrLines.length * 3.5;
     }
-    y += 1;
+    if (phone) {
+      doc.text(`Phone: +91 ${phone}`, 40, y, { align: 'center' });
+      y += 4.5;
+    }
 
     doc.text('----------------------------------------', 40, y, { align: 'center' });
-    y += 3.5;
+    y += 3.8;
 
-    doc.text('ITEM          QTY    PRICE    TOTAL', 4, y);
-    y += 3.5;
+    doc.text(`Bill No: ${inv.invoiceNumber}`, leftX, y);
+    doc.text(`${new Date(inv.date).toLocaleDateString('en-IN')}`, rightX, y, { align: 'right' });
+    y += 3.8;
+
+    doc.text(`Customer: ${inv.customerName}`, leftX, y);
+    y += 3.8;
+
+    if (inv.customerPhone) {
+      doc.text(`Mobile: +91 ${inv.customerPhone}`, leftX, y);
+      y += 3.8;
+    }
+
     doc.text('----------------------------------------', 40, y, { align: 'center' });
-    y += 4.5;
+    y += 3.8;
 
-    const itemsArray = inv.items || [];
+    // Exact Column Headers
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('ITEM', leftX, y);
+    doc.text('QTY', qtyX, y, { align: 'right' });
+    doc.text('PRICE', priceX, y, { align: 'right' });
+    doc.text('TOTAL', rightX, y, { align: 'right' });
+    y += 2.5;
+
+    doc.setFont('courier', 'normal');
+    doc.text('----------------------------------------', 40, y, { align: 'center' });
+    y += 4.2;
+
+    // Items Rows with Exact Column Alignment
     itemsArray.forEach((item: any) => {
-      const fullName = item.name || 'Item';
-      const nameStr = fullName.substring(0, 13).padEnd(13, ' ');
-      const qtyStr = item.qty.toString().padStart(2, ' ');
-      const priceStr = item.price.toFixed(0).padStart(7, ' ');
-      const totStr = item.total.toFixed(0).padStart(7, ' ');
+      const q = Number(item.qty || 1);
+      const p = Number(item.price || 0);
+      const t = Number(item.total ?? q * p);
 
-      doc.text(`${nameStr}${qtyStr} ${priceStr} ${totStr}`, 4, y);
-      y += 5;
+      const wrappedName = doc.splitTextToSize(item.name || 'Item', 33);
+      doc.text(wrappedName, leftX, y);
+      doc.text(String(q), qtyX, y, { align: 'right' });
+      doc.text(p.toFixed(0), priceX, y, { align: 'right' });
+      doc.text(t.toFixed(0), rightX, y, { align: 'right' });
+
+      y += Math.max(wrappedName.length * 3.8, 5);
     });
 
     doc.text('----------------------------------------', 40, y, { align: 'center' });
-    y += 4;
+    y += 4.2;
 
-    const subTot = inv.subTotal || inv.total;
-    const gstAmt = inv.gstAmount || 0;
-    const gRate = inv.gstRate || 0;
+    // Properly Aligned Summary Breakdown
+    doc.setFontSize(7.8);
+    doc.setFont('courier', 'normal');
 
     if (gRate > 0) {
-      doc.text(`Subtotal: Rs. ${subTot.toFixed(2)}`, 76, y, { align: 'right' });
+      doc.text('Subtotal', leftX, y);
+      doc.text(subTot.toFixed(2), rightX, y, { align: 'right' });
       y += 4;
-      doc.text(`GST (${gRate}%): Rs. ${gstAmt.toFixed(2)}`, 76, y, { align: 'right' });
-      y += 5;
+
+      const halfGst = gstAmt / 2;
+      doc.text(`CGST (${gRate / 2}%)`, leftX, y);
+      doc.text(halfGst.toFixed(2), rightX, y, { align: 'right' });
+      y += 4;
+
+      doc.text(`SGST (${gRate / 2}%)`, leftX, y);
+      doc.text(halfGst.toFixed(2), rightX, y, { align: 'right' });
+      y += 4.5;
     }
+
+    doc.text('----------------------------------------', 40, y, { align: 'center' });
+    y += 4.5;
 
     doc.setFont('courier', 'bold');
     doc.setFontSize(9.5);
-    doc.text(`GRAND TOTAL: Rs. ${inv.total.toFixed(2)}`, 76, y, { align: 'right' });
+    doc.text('GRAND TOTAL', leftX, y);
+    doc.text(`Rs. ${Number(inv.total).toFixed(2)}`, rightX, y, { align: 'right' });
     y += 6;
 
     // Dynamic UPI QR Code on 80mm Thermal Receipt
     if (qrDataUrl) {
+      doc.setFont('courier', 'normal');
+      doc.setFontSize(7.5);
       doc.text('----------------------------------------', 40, y, { align: 'center' });
       y += 3;
       doc.addImage(qrDataUrl, 'PNG', 26, y, 28, 28);
@@ -706,7 +759,7 @@ export default function CashLedgerDashboard() {
       y += 3.5;
       doc.setFont('courier', 'normal');
       doc.setFontSize(6.5);
-      doc.text(`${upiId} | Rs. ${inv.total.toFixed(2)}`, 40, y, { align: 'center' });
+      doc.text(`${upiId} | Rs. ${Number(inv.total).toFixed(2)}`, 40, y, { align: 'center' });
       y += 5;
     }
 
