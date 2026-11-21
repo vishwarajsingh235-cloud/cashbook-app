@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle, Edit3, Percent, Printer, Moon, Sun, Lock, ShieldCheck, Zap 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle, Edit3, Printer, Moon, Sun, Lock, ShieldCheck 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
@@ -58,8 +58,9 @@ export default function CashLedgerDashboard() {
   const [invStockQty, setInvStockQty] = useState('');
   const [invItemPrice, setInvItemPrice] = useState('');
 
-  // Multi-Item Invoice Form States with GST
+  // Multi-Item Invoice Form States with Mobile & GST
   const [invCustomerName, setInvCustomerName] = useState('');
+  const [invCustomerPhone, setInvCustomerPhone] = useState('');
   const [gstRate, setGstRate] = useState('0');
   const [itemsList, setItemsList] = useState<any[]>([
     { name: '', qty: '1', price: '' }
@@ -436,6 +437,7 @@ export default function CashLedgerDashboard() {
         userId: user.uid,
         invoiceNumber: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
         customerName: invCustomerName,
+        customerPhone: invCustomerPhone.trim(),
         items: formattedItems,
         subTotal,
         gstRate: gstPercentage,
@@ -456,6 +458,7 @@ export default function CashLedgerDashboard() {
 
       setShowInvoiceModal(false);
       setInvCustomerName('');
+      setInvCustomerPhone('');
       setGstRate('0');
       setItemsList([{ name: '', qty: '1', price: '' }]);
     } catch (err) {
@@ -508,7 +511,11 @@ export default function CashLedgerDashboard() {
     doc.setFont('times', 'bold');
     doc.text('BILLED TO:', 18, 51);
     doc.setFont('times', 'normal');
-    doc.text(inv.customerName, 18, 57);
+    doc.text(
+      inv.customerPhone ? `${inv.customerName}  |  Mobile: +91 ${inv.customerPhone}` : inv.customerName,
+      18,
+      57
+    );
 
     doc.setFillColor(15, 23, 42);
     doc.rect(14, 70, 182, 10, 'F');
@@ -579,7 +586,7 @@ export default function CashLedgerDashboard() {
     const { default: jsPDF } = await import('jspdf');
 
     const itemsCount = (inv.items || []).length;
-    const estimatedHeight = 120 + (itemsCount * 12) + ((inv.gstRate || 0) > 0 ? 25 : 0);
+    const estimatedHeight = 125 + (itemsCount * 12) + ((inv.gstRate || 0) > 0 ? 25 : 0) + (inv.customerPhone ? 5 : 0);
 
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, estimatedHeight] });
     doc.setFont('courier', 'normal');
@@ -603,7 +610,12 @@ export default function CashLedgerDashboard() {
     doc.text(`Date: ${new Date(inv.date).toLocaleDateString('en-IN')}`, 4, y);
     y += 3.5;
     doc.text(`Customer: ${inv.customerName}`, 4, y);
-    y += 4.5;
+    y += 3.5;
+    if (inv.customerPhone) {
+      doc.text(`Mobile: +91 ${inv.customerPhone}`, 4, y);
+      y += 3.5;
+    }
+    y += 1;
 
     doc.text('----------------------------------------', 40, y, { align: 'center' });
     y += 3.5;
@@ -1709,7 +1721,12 @@ export default function CashLedgerDashboard() {
                           <tr key={inv.id} className={`transition-colors ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
                             <td className={`p-3.5 font-mono font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{inv.invoiceNumber}</td>
                             <td className="p-3.5 text-slate-400 font-mono">{new Date(inv.date).toLocaleDateString('en-IN')}</td>
-                            <td className={`p-3.5 font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{inv.customerName}</td>
+                            <td className={`p-3.5 font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>
+                              <div>{inv.customerName}</div>
+                              {inv.customerPhone && (
+                                <div className="text-[10px] text-slate-400 font-mono">+91 {inv.customerPhone}</div>
+                              )}
+                            </td>
                             <td className="p-3.5 text-slate-400">
                               {inv.items ? `${inv.items.length} item(s)` : `${inv.itemName} (Qty: ${inv.quantity})`}
                             </td>
@@ -2257,7 +2274,7 @@ export default function CashLedgerDashboard() {
         </div>
       )}
 
-      {/* Create Multi-Item Invoice Modal with GST Selection */}
+      {/* Create Multi-Item Invoice Modal with Customer Mobile & GST */}
       {showInvoiceModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto text-white">
@@ -2265,7 +2282,7 @@ export default function CashLedgerDashboard() {
               <Receipt size={18} className="text-sky-400" /> Create Tax Invoice with GST
             </h3>
             <form onSubmit={handleCreateInvoice} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Customer Name</label>
                   <input 
@@ -2273,8 +2290,19 @@ export default function CashLedgerDashboard() {
                     required 
                     value={invCustomerName} 
                     onChange={(e) => setInvCustomerName(e.target.value)}
-                    placeholder="Enter customer name"
-                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
+                    placeholder="Enter name"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-3.5 py-3 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase mb-1 text-slate-400">Mobile Number</label>
+                  <input 
+                    type="tel" 
+                    maxLength={10}
+                    value={invCustomerPhone} 
+                    onChange={(e) => setInvCustomerPhone(e.target.value)}
+                    placeholder="Optional"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-3.5 py-3 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white placeholder-slate-500"
                   />
                 </div>
                 <div>
@@ -2282,12 +2310,12 @@ export default function CashLedgerDashboard() {
                   <select 
                     value={gstRate} 
                     onChange={(e) => setGstRate(e.target.value)}
-                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-3.5 py-3 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
+                    className="w-full border border-slate-700 bg-slate-800 rounded-2xl px-3 py-3 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 text-white"
                   >
-                    <option value="0">0% GST (No Tax)</option>
-                    <option value="5">5% GST (2.5% CGST + 2.5% SGST)</option>
-                    <option value="12">12% GST (6% CGST + 6% SGST)</option>
-                    <option value="18">18% GST (9% CGST + 9% SGST)</option>
+                    <option value="0">0% GST</option>
+                    <option value="5">5% GST</option>
+                    <option value="12">12% GST</option>
+                    <option value="18">18% GST</option>
                   </select>
                 </div>
               </div>
