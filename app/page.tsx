@@ -3,12 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, ArrowUpRight, Wallet, Plus, Minus, BookOpen, 
   Users, FileSpreadsheet, Settings, Search, Download, FileText, 
-  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle, Edit3, Printer, Moon, Sun, Lock, ShieldCheck 
+  CheckCircle2, UserPlus, UserCheck, LogOut, MessageCircle, Crown, Sparkles, X, TrendingUp, Tag, Calendar, Receipt, Trash2, RotateCcw, Package, AlertTriangle, Edit3, Printer, Moon, Sun, Lock, ShieldCheck, QrCode 
 } from 'lucide-react';
 import { auth, googleProvider, db } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import QRCode from 'qrcode';
 
 export default function CashLedgerDashboard() {
   const [user, setUser] = useState<User | null>(null);
@@ -66,11 +67,12 @@ export default function CashLedgerDashboard() {
     { name: '', qty: '1', price: '' }
   ]);
 
-  // Profile Fields
+  // Profile Fields (including UPI ID)
   const [businessName, setBusinessName] = useState('My Business');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
+  const [upiId, setUpiId] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // 1. Auth Listener & Profile / PIN Fetch
@@ -145,6 +147,7 @@ export default function CashLedgerDashboard() {
         setPhone(p.phone || '');
         setEmail(p.email || user.email || '');
         setAddress(p.address || '');
+        setUpiId(p.upiId || '');
         if (user.email !== 'vishwarajsingh234@gmail.com') {
           setIsPro(p.isPro || false);
         }
@@ -189,6 +192,19 @@ export default function CashLedgerDashboard() {
     } else {
       setShowUpgradeModal(true);
     }
+  };
+
+  // Helper: Generate UPI Intent QR Data URL
+  const generateUpiQrDataUrl = async (totalAmount: number, invoiceNumber: string) => {
+    const cleanUpi = upiId.trim();
+    if (!cleanUpi) return null;
+    const formattedAmt = Number(totalAmount || 0).toFixed(2);
+    const upiString = `upi://pay?pa=${encodeURIComponent(cleanUpi)}&pn=${encodeURIComponent(businessName)}&am=${formattedAmt}&cu=INR&tn=${encodeURIComponent(invoiceNumber)}`;
+    return await QRCode.toDataURL(upiString, {
+      width: 240,
+      margin: 1,
+      errorCorrectionLevel: 'M'
+    });
   };
 
   const handleSavePin = async (e: React.FormEvent) => {
@@ -468,6 +484,7 @@ export default function CashLedgerDashboard() {
 
   const executeDownloadInvoicePDF = async (inv: any) => {
     const { default: jsPDF } = await import('jspdf');
+    const qrDataUrl = await generateUpiQrDataUrl(inv.total, inv.invoiceNumber);
 
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
     doc.setFont('times', 'normal');
@@ -486,7 +503,8 @@ export default function CashLedgerDashboard() {
     doc.setFont('times', 'normal');
     doc.text([
       phone ? `Phone: +91 ${phone}` : '',
-      address ? `Address: ${address}` : ''
+      address ? `Address: ${address}` : '',
+      upiId ? `UPI ID: ${upiId}` : ''
     ].filter(Boolean), 14, 26);
 
     doc.setTextColor(2, 132, 199);
@@ -502,32 +520,32 @@ export default function CashLedgerDashboard() {
 
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.5);
-    doc.line(14, 38, 196, 38);
+    doc.line(14, 41, 196, 41);
 
     doc.setFillColor(248, 250, 252);
-    doc.roundedRect(14, 44, 182, 18, 2, 2, 'FD');
+    doc.roundedRect(14, 45, 182, 18, 2, 2, 'FD');
     doc.setTextColor(15, 23, 42);
     doc.setFontSize(10);
     doc.setFont('times', 'bold');
-    doc.text('BILLED TO:', 18, 51);
+    doc.text('BILLED TO:', 18, 52);
     doc.setFont('times', 'normal');
     doc.text(
       inv.customerPhone ? `${inv.customerName}  |  Mobile: +91 ${inv.customerPhone}` : inv.customerName,
       18,
-      57
+      58
     );
 
     doc.setFillColor(15, 23, 42);
-    doc.rect(14, 70, 182, 10, 'F');
+    doc.rect(14, 71, 182, 10, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(9);
     doc.setFont('times', 'bold');
-    doc.text('ITEM DESCRIPTION', 18, 76);
-    doc.text('QTY', 105, 76);
-    doc.text('PRICE (RS.)', 135, 76);
-    doc.text('TOTAL (RS.)', 180, 76, { align: 'right' });
+    doc.text('ITEM DESCRIPTION', 18, 77);
+    doc.text('QTY', 105, 77);
+    doc.text('PRICE (RS.)', 135, 77);
+    doc.text('TOTAL (RS.)', 180, 77, { align: 'right' });
 
-    let startY = 88;
+    let startY = 89;
     const itemsArray = inv.items || [{ name: inv.itemName, qty: inv.quantity, price: inv.price, total: inv.total }];
 
     itemsArray.forEach((item: any) => {
@@ -551,42 +569,62 @@ export default function CashLedgerDashboard() {
     const gRate = inv.gstRate || 0;
     const grandTot = inv.total;
 
-    startY += 8;
+    const summaryStartY = startY + 8;
+    let totalBoxY = summaryStartY;
     doc.setTextColor(15, 23, 42);
     doc.setFontSize(9);
 
     if (gRate > 0) {
-      doc.text(`Subtotal:`, 140, startY);
-      doc.text(`Rs. ${subTot.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, startY, { align: 'right' });
-      startY += 6;
+      doc.text(`Subtotal:`, 140, totalBoxY);
+      doc.text(`Rs. ${subTot.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, totalBoxY, { align: 'right' });
+      totalBoxY += 6;
 
       const halfGst = gstAmt / 2;
-      doc.text(`CGST (${gRate / 2}%):`, 140, startY);
-      doc.text(`Rs. ${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, startY, { align: 'right' });
-      startY += 6;
+      doc.text(`CGST (${gRate / 2}%):`, 140, totalBoxY);
+      doc.text(`Rs. ${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, totalBoxY, { align: 'right' });
+      totalBoxY += 6;
 
-      doc.text(`SGST (${gRate / 2}%):`, 140, startY);
-      doc.text(`Rs. ${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, startY, { align: 'right' });
-      startY += 8;
+      doc.text(`SGST (${gRate / 2}%):`, 140, totalBoxY);
+      doc.text(`Rs. ${halfGst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, totalBoxY, { align: 'right' });
+      totalBoxY += 8;
     }
 
     doc.setFillColor(240, 249, 255);
-    doc.roundedRect(125, startY, 71, 16, 2, 2, 'FD');
+    doc.roundedRect(125, totalBoxY, 71, 16, 2, 2, 'FD');
     doc.setTextColor(3, 105, 161);
     doc.setFontSize(9);
     doc.setFont('times', 'bold');
-    doc.text('GRAND TOTAL:', 130, startY + 10);
+    doc.text('GRAND TOTAL:', 130, totalBoxY + 10);
     doc.setFontSize(11);
-    doc.text(`Rs. ${grandTot.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, startY + 10, { align: 'right' });
+    doc.text(`Rs. ${grandTot.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 192, totalBoxY + 10, { align: 'right' });
+
+    // Dynamic UPI QR Code on A4 PDF
+    if (qrDataUrl) {
+      const qrY = summaryStartY;
+      doc.setDrawColor(203, 213, 225);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(14, qrY, 44, 52, 2, 2, 'FD');
+      doc.addImage(qrDataUrl, 'PNG', 20, qrY + 3, 32, 32);
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(7.5);
+      doc.setFont('times', 'bold');
+      doc.text('SCAN TO PAY VIA UPI', 36, qrY + 40, { align: 'center' });
+      doc.setFont('times', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(upiId.substring(0, 22), 36, qrY + 45, { align: 'center' });
+      doc.text(`Amt: Rs. ${grandTot.toFixed(2)}`, 36, qrY + 49, { align: 'center' });
+    }
 
     doc.save(`${inv.invoiceNumber}_${inv.customerName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
   };
 
   const executeDownloadThermalReceipt = async (inv: any) => {
     const { default: jsPDF } = await import('jspdf');
+    const qrDataUrl = await generateUpiQrDataUrl(inv.total, inv.invoiceNumber);
 
     const itemsCount = (inv.items || []).length;
-    const estimatedHeight = 125 + (itemsCount * 12) + ((inv.gstRate || 0) > 0 ? 25 : 0) + (inv.customerPhone ? 5 : 0);
+    const estimatedHeight = 125 + (itemsCount * 12) + ((inv.gstRate || 0) > 0 ? 25 : 0) + (inv.customerPhone ? 5 : 0) + (qrDataUrl ? 38 : 0);
 
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: [80, estimatedHeight] });
     doc.setFont('courier', 'normal');
@@ -654,7 +692,23 @@ export default function CashLedgerDashboard() {
     doc.setFont('courier', 'bold');
     doc.setFontSize(9.5);
     doc.text(`GRAND TOTAL: Rs. ${inv.total.toFixed(2)}`, 76, y, { align: 'right' });
-    y += 7;
+    y += 6;
+
+    // Dynamic UPI QR Code on 80mm Thermal Receipt
+    if (qrDataUrl) {
+      doc.text('----------------------------------------', 40, y, { align: 'center' });
+      y += 3;
+      doc.addImage(qrDataUrl, 'PNG', 26, y, 28, 28);
+      y += 30;
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(7.5);
+      doc.text('SCAN TO PAY VIA UPI', 40, y, { align: 'center' });
+      y += 3.5;
+      doc.setFont('courier', 'normal');
+      doc.setFontSize(6.5);
+      doc.text(`${upiId} | Rs. ${inv.total.toFixed(2)}`, 40, y, { align: 'center' });
+      y += 5;
+    }
 
     doc.setFont('courier', 'normal');
     doc.setFontSize(7.5);
@@ -674,6 +728,7 @@ export default function CashLedgerDashboard() {
         phone,
         email: user.email,
         address,
+        upiId: upiId.trim(),
         isPro: user.email === 'vishwarajsingh234@gmail.com' ? true : isPro
       }, { merge: true });
       setSaveSuccess(true);
@@ -1687,7 +1742,7 @@ export default function CashLedgerDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-800 pb-4">
                 <div>
                   <h3 className="text-base md:text-lg font-bold">Tax Invoices</h3>
-                  <p className="text-xs text-slate-400 font-semibold">Generate and download standard A4 or thermal POS receipts</p>
+                  <p className="text-xs text-slate-400 font-semibold">Generate and download standard A4 or thermal POS receipts with UPI QR</p>
                 </div>
               </div>
 
@@ -1880,7 +1935,7 @@ export default function CashLedgerDashboard() {
                 <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
                   <div>
                     <h3 className="text-lg font-bold">Store & Subscription</h3>
-                    <p className="text-xs text-slate-400">Manage your business profile and plan</p>
+                    <p className="text-xs text-slate-400">Manage your business profile, UPI QR ID, and plan</p>
                   </div>
                   <div className={`px-3.5 py-1.5 rounded-2xl flex items-center gap-2 border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
                     <Crown size={15} className={isPro ? "text-amber-400" : "text-slate-400"} />
@@ -1890,7 +1945,7 @@ export default function CashLedgerDashboard() {
 
                 {saveSuccess && (
                   <div className="mb-4 p-3.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-2xl font-bold text-xs flex items-center gap-2">
-                    <CheckCircle2 size={16} /> Business Profile Saved
+                    <CheckCircle2 size={16} /> Business Profile & UPI QR Saved
                   </div>
                 )}
 
@@ -1907,15 +1962,30 @@ export default function CashLedgerDashboard() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-black uppercase mb-1 text-slate-400">Phone Number</label>
-                    <input 
-                      type="text" 
-                      value={phone} 
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="Enter contact number"
-                      className={`w-full border rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-black uppercase mb-1 text-slate-400">Phone Number</label>
+                      <input 
+                        type="text" 
+                        value={phone} 
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="Enter contact number"
+                        className={`w-full border rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-black uppercase mb-1 text-slate-400 flex items-center gap-1">
+                        <QrCode size={12} className="text-sky-400" /> UPI ID (For Invoice QR)
+                      </label>
+                      <input 
+                        type="text" 
+                        value={upiId} 
+                        onChange={(e) => setUpiId(e.target.value)}
+                        placeholder="e.g. store@okaxis"
+                        className={`w-full border rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors ${darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400' : 'bg-white border-slate-300 text-slate-900'}`}
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -2279,7 +2349,7 @@ export default function CashLedgerDashboard() {
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto text-white">
             <h3 className="text-base font-extrabold uppercase mb-4 flex items-center gap-2">
-              <Receipt size={18} className="text-sky-400" /> Create Tax Invoice with GST
+              <Receipt size={18} className="text-sky-400" /> Create Tax Invoice with GST & UPI QR
             </h3>
             <form onSubmit={handleCreateInvoice} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
